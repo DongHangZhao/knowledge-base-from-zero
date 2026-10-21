@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>知识库体系门户 · KB Hub</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --panel:#ffffff; --ink:#1f2933; --sub:#5b6b7b; --line:#e3e8ef;
+    --brand:#2f6df0; --brand2:#16a34a; --warn:#e0a800; --danger:#e0524d; --chip:#eef3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}
+  header{position:sticky;top:0;z-index:10;background:linear-gradient(120deg,#2f6df0,#16a34a);
+    color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.5px}
+  header .spacer{flex:1}
+  header button{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;
+    padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  header button:hover{background:rgba(255,255,255,.32)}
+  header button.active{background:rgba(255,255,255,.5);font-weight:700}
+  header .langsep{opacity:.7;font-size:12px}
+  nav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:56px;z-index:9}
+  nav button{border:1px solid var(--line);background:#fff;color:var(--sub);padding:7px 14px;border-radius:20px;cursor:pointer;font-size:13px}
+  nav button.active{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:600}
+  main{padding:18px 20px;max-width:1280px;margin:0 auto}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);
+    display:flex;flex-direction:column}
+  .card h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card .purpose{color:var(--sub);font-size:12.5px;min-height:24px;flex:1}
+  .card .meta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .tag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--chip);color:var(--brand);
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag.s{background:#eafaf0;color:var(--brand2)} .tag.n{background:#fff6e0;color:#b07d00}
+  .tag.r{background:#fdecea;color:var(--danger)} .tag.g{background:#eef2f7;color:var(--sub)}
+  .card .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .card .acts button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--ink)}
+  .card .acts button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .card .acts button:hover{filter:brightness(.97)}
+  .summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+  .stat .num{font-size:28px;font-weight:800;color:var(--brand)}
+  .stat .lab{color:var(--sub);font-size:12.5px;margin-top:2px}
+  .section-title{font-size:16px;font-weight:700;margin:16px 0 12px;display:flex;align-items:center;gap:8px}
+  .hint{background:#eef3ff;border:1px solid #cfe0ff;color:#274690;padding:10px 14px;border-radius:10px;margin:0 0 14px;font-size:13px}
+  .hint.warn{background:#fff6e0;border-color:#f0dca8;color:#8a6100}
+  .hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;font-size:12px}
+  /* 双链路架构 */
+  .arch{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .archrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0}
+  .archrow+.archrow{border-top:1px dashed var(--line)}
+  .archlab{font-size:12px;font-weight:700;color:var(--brand);background:var(--chip);padding:3px 9px;border-radius:8px;white-space:nowrap}
+  .archrow:nth-child(2) .archlab{color:var(--brand2);background:#eafaf0}
+  .node{background:#f8fbff;border:1px solid #dce8fb;border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:600;line-height:1.35}
+  .node em{display:block;font-style:normal;font-weight:400;color:var(--sub);font-size:11px}
+  .arw{color:var(--sub);font-size:14px}
+  .archtip{margin-left:auto;font-size:11.5px;color:var(--sub);white-space:nowrap}
+  .archnote{margin-top:6px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--sub)}
+  .archnote code{background:#eef2f7;padding:1px 5px;border-radius:4px}
+  .toolbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  .toolbar input{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;min-width:260px}
+  .toolbar select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff}
+  .heat-row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:10px 14px;margin-bottom:8px}
+  .heat-rank{font-size:18px;font-weight:800;color:var(--brand);width:28px;text-align:center}
+  .heat-bar{flex:1;height:10px;background:#eef2f7;border-radius:6px;overflow:hidden}
+  .heat-bar i{display:block;height:100%;background:linear-gradient(90deg,#2f6df0,#16a34a)}
+  .heat-info{flex:2;min-width:200px}
+  .heat-info .nm{font-weight:600}
+  .heat-info .mt{color:var(--sub);font-size:12px;word-break:break-all}
+  .badge-today{background:var(--brand2);color:#fff;font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px}
+  .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+  .kv .b{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .kv .b .e{font-weight:700}.kv .b .c{color:var(--sub)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;
+    padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:50;
+    max-width:80vw;word-break:break-all;line-height:1.5}
+  .toast.show{opacity:.96}
+  .toast.err{background:#b3261e}
+  .hidden{display:none}
+  footer{text-align:center;color:var(--sub);font-size:12px;padding:20px}
+  /* 文件浏览 */
+  .crumbs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12.5px}
+  .crumbs a{color:var(--brand);cursor:pointer;text-decoration:none}
+  .crumbs span.sep{color:var(--sub)}
+  .flist{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .frow{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #f0f3f8;font-size:13px}
+  .frow:last-child{border-bottom:0}
+  .frow:hover{background:#f8fbff}
+  .frow .nm{flex:1;cursor:pointer;word-break:break-all}
+  .frow .nm:hover{color:var(--brand)}
+  .frow .sz{color:var(--sub);font-size:12px;width:90px;text-align:right}
+  .frow .ic{width:20px;text-align:center}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+  .dircard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+  .dircard:hover{border-color:var(--brand);background:#f8fbff}
+  .dircard .n{font-weight:600;font-size:13px;word-break:break-all}
+  .dircard .c{color:var(--sub);font-size:12px}
+  /* 工具页 */
+  .tpanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .tpanel h3{margin:0 0 4px;font-size:15px}
+  .tpanel .sub{color:var(--sub);font-size:12.5px;margin-bottom:10px}
+  .trow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .trow input{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;flex:1;min-width:240px}
+  .trow button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px}
+  .trow button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .tlog{background:#0f172a;color:#c9f7d4;border-radius:10px;padding:12px;margin-top:10px;font-size:12px;
+    line-height:1.55;max-height:320px;overflow:auto;white-space:pre-wrap;word-break:break-all;display:none}
+  .tlog.show{display:block}
+  .tlog .muted{color:#8aa0b8}
+  /* 检索结果 */
+  .ragpack{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+  .ragpack pre{background:#f8fbff;border:1px solid #dce8fb;border-radius:8px;padding:10px;font-size:12px;
+    white-space:pre-wrap;word-break:break-all;max-height:420px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1 data-i18n="h1">🍃 知识库体系门户</h1>
+  <span style="opacity:.85;font-size:12px" data-i18n="tagline">零散系统 · 技能卡片 · 功能模块 · 统一入口</span>
+  <span class="spacer"></span>
+  <button data-act="tab" data-tab="entries" data-i18n="hdrEntries">🚪 入口</button>
+  <button data-act="tab" data-tab="files" data-i18n="hdrFiles">📂 文件浏览</button>
+  <span class="langsep">|</span>
+  <button data-act="lang" data-lang="zh">中文</button>
+  <button data-act="lang" data-lang="en">EN</button>
+</header>
+
+<nav id="nav">
+  <button data-act="tab" data-tab="overview" class="active" data-i18n="navOverview">总览</button>
+  <button data-act="tab" data-tab="entries" data-i18n="navEntries">🚪 入口</button>
+  <button data-act="tab" data-tab="systems" data-i18n="navSystems">系统模块</button>
+  <button data-act="tab" data-tab="skills" data-i18n="navSkills">技能卡片</button>
+  <button data-act="tab" data-tab="projects" data-i18n="navProjects">项目</button>
+  <button data-act="tab" data-tab="resources" data-i18n="navResources">资源</button>
+  <button data-act="tab" data-tab="tools" data-i18n="navTools">🧰 工具</button>
+  <button data-act="tab" data-tab="files" data-i18n="navFiles">文件</button>
+  <button data-act="tab" data-tab="search" data-i18n="navSearch">🔍 全库检索</button>
+  <button data-act="tab" data-tab="heat" data-i18n="navHeat">🔥 每日常用</button>
+</nav>
+
+<main>
+  <div id="tab-overview"></div>
+  <div id="tab-entries" class="hidden"></div>
+  <div id="tab-systems" class="hidden"></div>
+  <div id="tab-skills" class="hidden"></div>
+  <div id="tab-projects" class="hidden"></div>
+  <div id="tab-resources" class="hidden"></div>
+  <div id="tab-tools" class="hidden"></div>
+  <div id="tab-files" class="hidden"></div>
+  <div id="tab-search" class="hidden"></div>
+  <div id="tab-heat" class="hidden"></div>
+</main>
+
+<footer data-i18n="footer">知识库体系门户 · 本地零依赖服务（stdlib http.server）· 点用即记录热度</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+let INV = null, KB_ROOT = "", HEAT = [], BROWSE = null, CUR_TAB = "overview";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtSize = n => n >= 1048576 ? (n/1048576).toFixed(1)+" MB" : n >= 1024 ? (n/1024).toFixed(0)+" KB" : n+" B";
+
+// ---------- i18n（中英切换；UI 文案全部进字典，数据内容不翻译）----------
+const I18N = {
+zh:{
+  h1:"🍃 知识库体系门户", tagline:"零散系统 · 技能卡片 · 功能模块 · 统一入口",
+  hdrEntries:"🚪 入口", hdrFiles:"📂 文件浏览",
+  navOverview:"总览", navEntries:"🚪 入口", navSystems:"系统模块", navSkills:"技能卡片",
+  navProjects:"项目", navResources:"资源", navTools:"🧰 工具", navFiles:"文件",
+  navSearch:"🔍 全库检索", navHeat:"🔥 每日常用",
+  footer:"知识库体系门户 · 本地零依赖服务（stdlib http.server）· 点用即记录热度",
+  docTitle:"知识库体系门户 · {s} 系统 / {k} 卡",
+  demoHint:'📌 当前显示的是<b>示例清单</b>（数据全部虚构，路径不可点）。想换成你自己的库：在门户目录跑一次 <code>python inventory_builder.py --kb-root "你的知识库路径"</code>，生成 <code>inventory.json</code> 后重启即可。',
+  statSystems:"系统 / 模块", statSkills:"技能卡片", statOpenable:"可打开卡片", statProjects:"项目",
+  statEntries:"统一入口", statFiles:"文件总量",
+  archTitle:"🏗 体系架构：四区 + 双链路",
+  linkA:"链路 A · 内容", nodeRaw:"raw/ 原件", emRaw:"只读 · 永不删",
+  nodeWiki:"wiki/ 合成", emWiki:"可改写 · 挂 Raw 溯源", nodeOut:"outputs/ 产物", emOut:"会覆盖",
+  tipA:"文件即真相源",
+  linkB:"链路 B · 索引", nodeMd:"md 文件", emMd:"按 content_hash 增量",
+  nodeDb:"kb.db（SQLite）", emDb:"docs · docs_fts · chunks · chunks_fts",
+  nodeTop:"检索 top-k", emTop:"必带 doc.path", tipB:"派生层 · 可删可重建",
+  archNote:'两条链只靠一个约定对齐：<code>doc.path</code> = 文件相对路径。所以检索结果永远能点回原文——AI 引用不再是猜的。',
+  toolsTitle:"🧰 常用工具（点开即用，不跳页）",
+  t1:"🎬 贴地址下载视频", t1d:"视频号分享链接贴进去就下，落到 modules/视频下载/downloads/", t1ready:"可直接用", t1go:"去下载",
+  t2:"💬 微信聊天记录搜索", t2d:"本机聊天记录 FTS5 全文检索，只读、不出网", t2go:"去搜索",
+  t3:"🔳 二维码生成 / 分发", t3d:"文本·URL·WiFi·名片·文件内嵌，扫码走 8787 /files/ 取本体", t3need:"需 8787", t3go:"直接打开",
+  entriesTitle:"🚪 统一入口（{n} 个，点开即用）",
+  catTitle:"技能卡片来源分布", catCount:"{n} 张卡",
+  sessTitle:"💬 最近会话记录（含本次对话）",
+  fileStatsTitle:"文件类型分布（Top）", zoneFiles:"{z}/（共 {n} 文件）", extCount:"{n} 个",
+  entriesHint:'把散落在 <b>modules/</b>、<b>.workbuddy/</b>、<b>outputs/</b> 的去处统一收敛到一屏。共 {n} 个入口，{ok} 个可直达{miss}。',
+  missPart:'，<b style="color:#b3261e">{n} 个缺失</b>（路径变了需重扫）',
+  open:"打开", browseDir:"浏览所在目录", record:"记一次", reachable:"可直达", missing:"路径缺失",
+  sysPh:"搜索系统/模块…", scripts:"{n} 脚本",
+  openFolder:"打开文件夹", readme:"读README", browse:"浏览",
+  skillsHint:'共 <b>{n}</b> 张卡，<b>{m}</b> 张能直达源文件（提示词资产 = 立规类提示词 + AI 工作模式卡片）。点「打开卡片」直接看 SKILL.md / md 原文。',
+  skillPh:"搜索技能卡片（名称/说明）…", cardsN:"{n} 张",
+  canOpen:"可打开", noSrc:"无源文件", openCard:"打开卡片", inDir:"所在目录",
+  resWiki:"wiki 分区", zonesTitle:"outputs / raw 一级目录（{n}）", filesN:"{n} 文件",
+  reading:"正在读取：{p}", readFail:"读取失败：{m}", unknown:"未知错误", backRoot:"回到知识库根",
+  crumbRoot:"🏠 知识库根", up:"⬆ 上级", refresh:"🔄 刷新", openExplorer:"在资源管理器打开",
+  dirsFiles:"{d} 目录 / {f} 文件", dirsTitle:"目录（{n}）", filesTitle:"文件（{n}）",
+  noFiles:"此目录没有文件。", clickEnter:"点击进入",
+  heatEmpty:"还没有使用记录。去「入口 / 系统模块 / 技能卡片 / 文件」里点「打开」或「记一次」，这里就会按热度每日排序。",
+  heatHint:'🔥 按 <b>使用频率 × 时间衰减</b>排序（30 天线性衰减）。每天打开这一屏，按需点用最高频的。',
+  today:"今日", heatMeta:"{k} · 热度 {h} · 累计 {c} 次 · 上次 {l}",
+  toolsHint:'三个高频动作直接在这里做：<b>贴地址下载视频号视频</b>、<b>搜本机微信聊天记录</b>、<b>生成二维码</b>。结果实时回显，不跳页面。<br>前提：门户要放在<b>知识库根目录</b>（同级有 <code>modules/</code>），否则工具会提示「未找到脚本」。',
+  videoTitle:"🎬 贴地址下载视频（微信视频号）",
+  videoSub:"把分享链接（https://weixin.qq.com/sph/xxx）贴进来，后端调用 modules/视频下载/sph_download.py 解析直链并下载到 downloads/。Cookie 过期时会提示重新抓。",
+  videoPh:"https://weixin.qq.com/sph/xxxxx", startDl:"开始下载", openDlDir:"打开下载目录",
+  wxTitle:"💬 微信聊天记录搜索（本机 FTS5 库）",
+  wxSub:"查 modules/微信聊天记录库 的本地检索库（百万级消息 / 千级会话）。只读本机，不出网。",
+  wxPh:"关键词，如：合同 / 报价 / 会议", wxSearch:"搜索", openModule:"打开模块",
+  qrTitle:"🔳 二维码生成 / 媒体分发",
+  qrSub:"文本·URL·WiFi·名片·文件内嵌；扫码经 8787 的 /files/ 取本体。点下面按钮会自动拉起 8787 后台再打开工具页。",
+  openQr:"打开二维码工具",
+  searchHint:'🔍 <b>全库检索</b>：三链路融合（FTS5 关键词 + BGE 语义向量 + 字级 substring），覆盖 <b>wiki/</b> 与 <b>raw/</b> 全文——包括有道云笔记导出、docx / pdf / txt 等本地笔记。<b>一个字、一句话都搜得到</b>，命中必带路径可点回原文。',
+  searchTitle:"🔍 全库检索",
+  searchSub:"输入问题或关键词；「检索」给命中列表，「问知识库」组装带引用的上下文包（可直接喂给 AI）。",
+  ragPh:"问题或关键词，如：双链路 / 屮艸芔茻",
+  modeFused:"融合（推荐）", modeKw:"关键词", modeVec:"向量", modeSubstr:"字级",
+  ragSearch:"检索", ragAsk:"问知识库", searching:"⏳ 检索中…",
+  ragFail:"⚠️ 检索失败：{m}", ragNone:"库内未检索到相关内容",
+  askTitle:"📦 上下文包（{n} 条引用）", openFile:"打开文件", score:"相关度 {s}",
+  reqFail:"请求失败：{m}", recorded:"已记录一次 · 热度 +1",
+  needUrl:"先贴一条视频号分享链接",
+  dlRunning:"⏳ 正在解析并下载…（最长等 10 分钟，实时回显）",
+  dlStartFail:"启动失败", dlDone:"✅ 下载进程结束", dlEnd:"⚠️ 进程结束，请看日志",
+  noLog:"（暂无输出）", needKw:"输入要搜的关键词", noResult:"（无结果）",
+  qrBooting:"正在确保 8787 后台在跑…", qrReady:"✅ 二维码工具已就绪", qrFail:"8787 启动失败"
+},
+en:{
+  h1:"🍃 KB Hub", tagline:"Systems · Skill cards · Modules · One gateway",
+  hdrEntries:"🚪 Entries", hdrFiles:"📂 Files",
+  navOverview:"Overview", navEntries:"🚪 Entries", navSystems:"Systems", navSkills:"Skill Cards",
+  navProjects:"Projects", navResources:"Resources", navTools:"🧰 Tools", navFiles:"Files",
+  navSearch:"🔍 KB Search", navHeat:"🔥 Daily Top",
+  footer:"KB Hub · zero-dependency local service (stdlib http.server) · clicks are recorded as usage",
+  docTitle:"KB Hub · {s} systems / {k} cards",
+  demoHint:'📌 You are viewing the <b>example inventory</b> (all data fictional, paths not clickable). To use your own library: run <code>python inventory_builder.py --kb-root "your-kb-path"</code> in the portal folder, then restart.',
+  statSystems:"Systems / modules", statSkills:"Skill cards", statOpenable:"Openable cards", statProjects:"Projects",
+  statEntries:"Entries", statFiles:"Total files",
+  archTitle:"🏗 Architecture: Four Zones + Dual Pipelines",
+  linkA:"Pipeline A · Content", nodeRaw:"raw/ sources", emRaw:"read-only · never delete",
+  nodeWiki:"wiki/ synthesis", emWiki:"editable · Raw traceability", nodeOut:"outputs/ artifacts", emOut:"overwritten",
+  tipA:"Files are the source of truth",
+  linkB:"Pipeline B · Index", nodeMd:"md files", emMd:"incremental by content_hash",
+  nodeDb:"kb.db (SQLite)", emDb:"docs · docs_fts · chunks · chunks_fts",
+  nodeTop:"top-k retrieval", emTop:"always with doc.path", tipB:"Derived layer · safe to rebuild",
+  archNote:'The two pipelines align on one convention: <code>doc.path</code> = relative file path. So every hit can be clicked back to the source — AI citations are no longer guesses.',
+  toolsTitle:"🧰 Common tools (in-page, no jumping)",
+  t1:"🎬 Download video by URL", t1d:"Paste a Channels share link; files land in modules/视频下载/downloads/", t1ready:"Ready", t1go:"Go",
+  t2:"💬 WeChat log search", t2d:"Local FTS5 full-text search over chat logs; read-only, offline", t2go:"Search",
+  t3:"🔳 QR code / distribution", t3d:"Text · URL · WiFi · vCard · file embedding; scans fetch via 8787 /files/", t3need:"needs 8787", t3go:"Open",
+  entriesTitle:"🚪 Unified entries ({n})",
+  catTitle:"Skill card sources", catCount:"{n} cards",
+  sessTitle:"💬 Recent sessions (incl. this one)",
+  fileStatsTitle:"File type distribution (Top)", zoneFiles:"{z}/ ({n} files)", extCount:"{n}",
+  entriesHint:'Consolidate scattered locations in <b>modules/</b>, <b>.workbuddy/</b>, <b>outputs/</b> into one screen. {n} entries, {ok} reachable{miss}.',
+  missPart:', <b style="color:#b3261e">{n} missing</b> (paths changed — rescan)',
+  open:"Open", browseDir:"Browse folder", record:"Record", reachable:"Reachable", missing:"Path missing",
+  sysPh:"Search systems/modules…", scripts:"{n} scripts",
+  openFolder:"Open folder", readme:"Read README", browse:"Browse",
+  skillsHint:'<b>{n}</b> cards, <b>{m}</b> link straight to source files (prompt assets = standing rules + AI workflow cards). Click "Open card" for the SKILL.md / md source.',
+  skillPh:"Search skill cards (name/desc)…", cardsN:"{n}",
+  canOpen:"Openable", noSrc:"No source", openCard:"Open card", inDir:"Folder",
+  resWiki:"wiki zones", zonesTitle:"outputs / raw top-level ({n})", filesN:"{n} files",
+  reading:"Reading: {p}", readFail:"Read failed: {m}", unknown:"Unknown error", backRoot:"Back to KB root",
+  crumbRoot:"🏠 KB root", up:"⬆ Up", refresh:"🔄 Refresh", openExplorer:"Open in Explorer",
+  dirsFiles:"{d} dirs / {f} files", dirsTitle:"Directories ({n})", filesTitle:"Files ({n})",
+  noFiles:"No files in this folder.", clickEnter:"Click to enter",
+  heatEmpty:'No usage yet. Click "Open" or "Record" in Entries / Systems / Skill cards / Files, and this screen ranks them by heat.',
+  heatHint:'🔥 Ranked by <b>usage × time decay</b> (30-day linear). Open this screen daily and use what\'s hot.',
+  today:"Today", heatMeta:"{k} · heat {h} · {c} total · last {l}",
+  toolsHint:'Three frequent actions in one page: <b>download a Channels video by URL</b>, <b>search local WeChat logs</b>, <b>generate QR codes</b>. Live output, no page jumps.<br>Requires the portal to sit in the <b>KB root</b> (with <code>modules/</code> beside it), otherwise tools report "script not found".',
+  videoTitle:"🎬 Download video by URL (WeChat Channels)",
+  videoSub:'Paste a share link (https://weixin.qq.com/sph/xxx); the backend calls modules/视频下载/sph_download.py to resolve the direct link into downloads/. Re-fetch the cookie when it expires.',
+  videoPh:"https://weixin.qq.com/sph/xxxxx", startDl:"Start download", openDlDir:"Open downloads",
+  wxTitle:"💬 WeChat log search (local FTS5)",
+  wxSub:"Queries the local index in modules/微信聊天记录库 (millions of messages / thousands of sessions). Read-only, offline.",
+  wxPh:"Keyword, e.g. contract / quote / meeting", wxSearch:"Search", openModule:"Open module",
+  qrTitle:"🔳 QR code / media distribution",
+  qrSub:"Text · URL · WiFi · vCard · file embedding; scans fetch the payload via 8787 /files/. The button below boots 8787 in the background, then opens the tool page.",
+  openQr:"Open QR tool",
+  searchHint:'🔍 <b>Whole-library search</b>: three pipelines fused (FTS5 keywords + BGE semantic vectors + character-level substring) over <b>wiki/</b> and <b>raw/</b> full text — including Youdao Note exports, docx / pdf / txt and other local notes. <b>Every character, every sentence is findable</b>, and every hit carries its path back to the source.',
+  searchTitle:"🔍 Whole-library search",
+  searchSub:'Type a question or keyword; "Search" returns hits, "Ask KB" assembles a cited context pack (ready to feed an AI).',
+  ragPh:"Question or keyword, e.g. dual pipeline",
+  modeFused:"Fused (recommended)", modeKw:"Keywords", modeVec:"Vector", modeSubstr:"Substring",
+  ragSearch:"Search", ragAsk:"Ask KB", searching:"⏳ Searching…",
+  ragFail:"⚠️ Search failed: {m}", ragNone:"Nothing found in the library",
+  askTitle:"📦 Context pack ({n} citations)", openFile:"Open file", score:"score {s}",
+  reqFail:"Request failed: {m}", recorded:"Recorded · heat +1",
+  needUrl:"Paste a share link first",
+  dlRunning:"⏳ Resolving & downloading… (up to 10 min, live output)",
+  dlStartFail:"Failed to start", dlDone:"✅ Download finished", dlEnd:"⚠️ Process ended, see log",
+  noLog:"(no output yet)", needKw:"Enter a keyword", noResult:"(no results)",
+  qrBooting:"Ensuring the 8787 service is running…", qrReady:"✅ QR tool ready", qrFail:"Failed to start 8787"
+}};
+let LANG = (function(){
+  try{ const s = localStorage.getItem("kbhub_lang"); if(s === "zh" || s === "en") return s; }catch(e){}
+  return (navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+})();
+function t(k, vars){
+  let s = (I18N[LANG] && I18N[LANG][k]) || I18N.zh[k] || k;
+  if(vars) for(const v in vars) s = s.split("{" + v + "}").join(String(vars[v]));
+  return s;
+}
+function applyStaticI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+  document.querySelectorAll('[data-act="lang"]').forEach(b => b.classList.toggle("active", b.dataset.lang === LANG));
+  document.title = t("docTitle", {s:(INV&&INV.summary||{}).systems||0, k:(INV&&INV.summary||{}).skills||0});
+}
+function setLang(l){
+  if(l !== "zh" && l !== "en") return;
+  LANG = l;
+  try{ localStorage.setItem("kbhub_lang", l); }catch(e){}
+  applyStaticI18n();
+  switchTab(CUR_TAB, true);
+}
+
+function toast(msg, isErr){
+  const t2 = $("#toast"); t2.textContent = msg; t2.classList.toggle("err", !!isErr);
+  t2.classList.add("show"); clearTimeout(t2._h); t2._h = setTimeout(()=>t2.classList.remove("show"), isErr ? 4200 : 2200);
+}
+
+async function api(path, opt){
+  try{
+    const r = await fetch(path, opt);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  }catch(e){ toast(t("reqFail", {m:e.message}), true); return null; }
+}
+const post = (p, body) => api(p, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+
+// ---------- 统一动作（全部走 data-*，不再拼 onclick 字符串，避免反斜杠被 JS 吞掉）----------
+async function doLaunch(ds){
+  const body = {
+    id: ds.id || ds.name, name: ds.name || ds.id, kind: ds.kind || "",
+    target: ds.target || "", action: ds.action || "open_path"
+  };
+  const res = await post("/api/launch", body);
+  if(!res) return;
+  toast((res.ok ? "✅ " : "⚠️ ") + res.msg, !res.ok);
+  if(res.top) refreshHeat(res.top);
+}
+async function doRecord(ds){
+  const res = await post("/api/record", {
+    id: ds.id || ds.name, name: ds.name || ds.id, kind: ds.kind || "", target: ds.target || ""
+  });
+  if(res && res.top){ toast(t("recorded")); refreshHeat(res.top); }
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if(!b) return;
+  const ds = b.dataset;
+  if(ds.act === "launch") return void doLaunch(ds);
+  if(ds.act === "record") return void doRecord(ds);
+  if(ds.act === "tab")   return void switchTab(ds.tab);
+  if(ds.act === "browse")return void loadBrowse(ds.path);
+  if(ds.act === "up")    return void loadBrowse(BROWSE && BROWSE.parent ? BROWSE.parent : KB_ROOT);
+  if(ds.act === "refresh") return void loadBrowse(BROWSE ? BROWSE.path : KB_ROOT);
+  if(ds.act === "video-dl") return void startVideoDownload();
+  if(ds.act === "wx-search") return void runWxSearch();
+  if(ds.act === "open-qr")  return void openQrTool();
+  if(ds.act === "lang")     return void setLang(ds.lang);
+  if(ds.act === "rag-search") return void runRag(false);
+  if(ds.act === "rag-ask")    return void runRag(true);
+});
+
+// ---------- 渲染：总览 ----------
+function renderOverview(){
+  const s = INV.summary || {};
+  const isDemo = /示例/.test(String(INV.generated_at || ""));
+  let h = "";
+  if(isDemo){
+    h += `<div class="hint warn">${t("demoHint")}</div>`;
+  }
+  h += `<div class="summary">
+    <div class="stat"><div class="num">${s.systems||0}</div><div class="lab">${t("statSystems")}</div></div>
+    <div class="stat"><div class="num">${s.skills||0}</div><div class="lab">${t("statSkills")}</div></div>
+    <div class="stat"><div class="num">${s.skills_openable||0}</div><div class="lab">${t("statOpenable")}</div></div>
+    <div class="stat"><div class="num">${s.projects||0}</div><div class="lab">${t("statProjects")}</div></div>
+    <div class="stat"><div class="num">${s.entries||0}</div><div class="lab">${t("statEntries")}</div></div>
+    <div class="stat"><div class="num">${(s.raw_files||0)+(s.outputs_files||0)+(s.wiki_files||0)}</div><div class="lab">${t("statFiles")}</div></div>
+  </div>`;
+
+  // 🏗 双链路架构（静态说明：不依赖清单数据，示例模式也能看）
+  h += `<div class="section-title">${t("archTitle")}</div>
+  <div class="arch">
+    <div class="archrow">
+      <span class="archlab">${t("linkA")}</span>
+      <span class="node">${t("nodeRaw")}<em>${t("emRaw")}</em></span><span class="arw">→</span>
+      <span class="node">${t("nodeWiki")}<em>${t("emWiki")}</em></span><span class="arw">→</span>
+      <span class="node">${t("nodeOut")}<em>${t("emOut")}</em></span>
+      <span class="archtip">${t("tipA")}</span>
+    </div>
+    <div class="archrow">
+      <span class="archlab">${t("linkB")}</span>
+      <span class="node">${t("nodeMd")}<em>${t("emMd")}</em></span><span class="arw">→</span>
+      <span class="node">${t("nodeDb")}<em>${t("emDb")}</em></span><span class="arw">→</span>
+      <span class="node">${t("nodeTop")}<em>${t("emTop")}</em></span>
+      <span class="archtip">${t("tipB")}</span>
+    </div>
+    <div class="archnote">${t("archNote")}</div>
+  </div>`;
+
+  // 🧰 高频工具直达
+  h += `<div class="section-title">${t("toolsTitle")}</div><div class="cards">
+    <div class="card"><h3>${t("t1")}</h3>
+      <div class="purpose">${t("t1d")}</div>
+      <div class="meta"><span class="tag s">${t("t1ready")}</span><span class="tag g">sph_download.py</span></div>
+      <div class="acts"><button class="primary" data-act="tab" data-tab="tools">${t("t1go")}</button></div></div>
+    <div class="card"><h3>${t("t2")}</h3>
+      <div class="purpose">${t("t2d")}</div>
+      <div class="meta"><span class="tag s">${t("t1ready")}</span><span class="tag g">${t("wxTitle")}</span></div>
+      <div class="acts"><button class="primary" data-act="tab" data-tab="tools">${t("t2go")}</button></div></div>
+    <div class="card"><h3>${t("t3")}</h3>
+      <div class="purpose">${t("t3d")}</div>
+      <div class="meta"><span class="tag n">${t("t3need")}</span><span class="tag g">${t("qrTitle")}</span></div>
+      <div class="acts"><button class="primary" data-act="open-qr">${t("t3go")}</button></div></div>
+  </div>`;
+
+  // 快捷入口条
+  h += `<div class="section-title">${t("entriesTitle", {n:(INV.entries||[]).length})}</div><div class="cards">`;
+  (INV.entries||[]).forEach(e => {
+    h += `<div class="card"><h3>${e.icon||"📁"} ${esc(e.name)}</h3>
+      <div class="purpose">${esc(e.desc)}</div>
+      <div class="meta">${e.exists?`<span class="tag s">${t("reachable")}</span>`:`<span class="tag r">${t("missing")}</span>`}<span class="tag g" title="${esc(e.path)}">${esc(e.path)}</span></div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="${esc(e.id)}" data-name="${esc(e.name)}" data-kind="entry" data-target="${esc(e.path)}" data-action="${esc(e.action)}" ${e.exists?"":"disabled"}>${t("open")}</button>
+        <button data-act="record" data-id="${esc(e.id)}" data-name="${esc(e.name)}" data-kind="entry" data-target="${esc(e.path)}">${t("record")}</button>
+      </div></div>`;
+  });
+  h += `</div>`;
+
+  // 技能分类
+  h += `<div class="section-title">${t("catTitle")}</div><div class="cards">`;
+  (INV.skill_categories||[]).forEach(c => {
+    h += `<div class="card"><h3>${esc(c.category)}</h3><div class="purpose">${t("catCount", {n:c.count})}</div>
+      <div class="meta"><span class="tag">${c.count}</span></div></div>`;
+  });
+  h += `</div>`;
+
+  // 最近会话
+  if((INV.sessions||[]).length){
+    h += `<div class="section-title">${t("sessTitle")}</div><div class="flist">`;
+    INV.sessions.slice(0,8).forEach(s2 => {
+      h += `<div class="frow"><span class="ic">💬</span>
+        <span class="nm" data-act="launch" data-id="session:${esc(s2.abs_path)}" data-name="会话 ${esc(s2.name)}" data-kind="session" data-target="${esc(s2.abs_path)}" data-action="open_file">${esc(s2.name)}</span>
+        <span class="sz">${s2.size_kb} KB</span></div>`;
+    });
+    h += `</div>`;
+  }
+
+  // 文件类型
+  h += `<div class="section-title">${t("fileStatsTitle")}</div>`;
+  Object.keys(INV.file_stats||{}).forEach(z => {
+    const d = INV.file_stats[z];
+    h += `<div class="section-title" style="font-size:14px;margin-top:10px">${t("zoneFiles", {z:esc(z), n:d.total})}</div><div class="kv">`;
+    Object.entries(d.top_ext).forEach(([ext, n]) => {
+      h += `<div class="b"><div class="e">${esc(ext)}</div><div class="c">${t("extCount", {n})}</div></div>`;
+    });
+    h += `</div>`;
+  });
+  $("#tab-overview").innerHTML = h;
+}
+
+// ---------- 渲染：入口 ----------
+function renderEntries(){
+  const list = INV.entries || [];
+  const miss = list.filter(x => !x.exists).length;
+  let h = `<div class="hint">${t("entriesHint", {n:list.length, ok:list.length-miss, miss:miss?t("missPart",{n:miss}):""})}</div>
+  <div class="cards">`;
+  list.forEach(e => {
+    h += `<div class="card">
+      <h3>${e.icon||"📁"} ${esc(e.name)}</h3>
+      <div class="purpose">${esc(e.desc)}</div>
+      <div class="meta">${e.exists?`<span class="tag s">${t("reachable")}</span>`:`<span class="tag r">${t("missing")}</span>`}<span class="tag g" title="${esc(e.path)}">${esc(e.path)}</span></div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="${esc(e.id)}" data-name="${esc(e.name)}" data-kind="entry" data-target="${esc(e.path)}" data-action="${esc(e.action)}" ${e.exists?"":"disabled"}>${t("open")}</button>
+        ${(e.kind==="url"||e.kind==="page")?"":`<button data-act="browse" data-path="${esc(e.path)}">${t("browseDir")}</button>`}
+        <button data-act="record" data-id="${esc(e.id)}" data-name="${esc(e.name)}" data-kind="entry" data-target="${esc(e.path)}">${t("record")}</button>
+      </div></div>`;
+  });
+  h += `</div>`;
+  $("#tab-entries").innerHTML = h;
+}
+
+// ---------- 渲染：系统 ----------
+function statusTag(st){
+  if(st && st.includes("✅")) return `<span class="tag s">${esc(st)}</span>`;
+  if(st && st.includes("🆕")) return `<span class="tag n">${esc(st)}</span>`;
+  if(st && st.includes("📖")) return `<span class="tag n">${esc(st)}</span>`;
+  if(st && st.includes("🔴")) return `<span class="tag r">${esc(st)}</span>`;
+  return `<span class="tag">${esc(st || "—")}</span>`;
+}
+
+function renderSystems(filter=""){
+  const kw = (filter||"").toLowerCase();
+  const list = (INV.systems||[]).filter(x => !kw || (x.name + x.purpose).toLowerCase().includes(kw));
+  let h = `<div class="toolbar"><input id="sysSearch" placeholder="${t("sysPh")}" value="${esc(filter)}"><span class="tag g">${list.length} / ${(INV.systems||[]).length}</span></div><div class="cards">`;
+  list.forEach(x => {
+    const rd = x.abs_path ? x.abs_path + "\\README.md" : "";
+    h += `<div class="card">
+      <h3>${esc(x.name)}</h3>
+      <div class="purpose">${esc(x.purpose)}</div>
+      <div class="meta">${statusTag(x.status)}<span class="tag">${t("scripts",{n:x.py_count})}</span><span class="tag g">${esc(x.rel_path)}</span></div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="${esc(x.id)}" data-name="${esc(x.name)}" data-kind="system" data-target="${esc(x.abs_path)}" data-action="open_folder">${t("openFolder")}</button>
+        <button data-act="launch" data-id="${esc(x.id)}" data-name="${esc(x.name)}-README" data-kind="system" data-target="${esc(rd)}" data-action="open_file">${t("readme")}</button>
+        <button data-act="browse" data-path="${esc(x.abs_path)}">${t("browse")}</button>
+        <button data-act="record" data-id="${esc(x.id)}" data-name="${esc(x.name)}" data-kind="system" data-target="${esc(x.abs_path)}">${t("record")}</button>
+      </div></div>`;
+  });
+  h += `</div>`;
+  const el = $("#tab-systems"); el.innerHTML = h;
+  const inp = $("#sysSearch");
+  if(inp){ inp.oninput = ev => { const v = ev.target.value; renderSystems(v); const i2 = $("#sysSearch"); if(i2){ i2.focus(); i2.setSelectionRange(v.length,v.length);} }; }
+}
+
+// ---------- 渲染：技能卡片 ----------
+function renderSkills(filter=""){
+  const kw = (filter||"").toLowerCase();
+  const all = INV.skills || [];
+  const cats = {};
+  all.forEach(s => { (cats[s.category] = cats[s.category] || []).push(s); });
+  let h = `<div class="hint">${t("skillsHint", {n:all.length, m:(INV.summary||{}).skills_openable||0})}</div>
+    <div class="toolbar"><input id="skSearch" placeholder="${t("skillPh")}" value="${esc(filter)}"><span class="tag g">${all.filter(s=>!kw||(s.name+s.cn_name+s.description).toLowerCase().includes(kw)).length} ${LANG==="zh"?"张":"cards"}</span></div>`;
+  Object.keys(cats).sort().forEach(cat => {
+    const items = cats[cat].filter(s => !kw || (s.name + (s.cn_name||"") + s.description).toLowerCase().includes(kw));
+    if(!items.length) return;
+    h += `<div class="section-title">${esc(cat)}（${items.length}）</div><div class="cards">`;
+    items.forEach(s => {
+      const nm = s.cn_name || s.name;
+      h += `<div class="card">
+        <h3>${esc(nm)}</h3>
+        <div class="purpose">${esc(s.description)}</div>
+        <div class="meta">${s.exists?`<span class="tag s">${t("canOpen")}</span>`:`<span class="tag r">${t("noSrc")}</span>`}<span class="tag">${esc(s.name)}</span><span class="tag g">${esc(s.source)}</span>${(s.triggers||[]).slice(0,2).map(t2=>`<span class="tag n">${esc(t2)}</span>`).join("")}</div>
+        <div class="acts">
+          <button class="primary" data-act="launch" data-id="${esc(s.id)}" data-name="${esc(nm)}" data-kind="skill" data-target="${esc(s.path)}" data-action="open_file" ${s.exists?"":"disabled"}>${t("openCard")}</button>
+          <button data-act="browse" data-path="${esc((s.path||"").replace(/[\\/][^\\/]*$/,""))}">${t("inDir")}</button>
+          <button data-act="record" data-id="${esc(s.id)}" data-name="${esc(nm)}" data-kind="skill" data-target="${esc(s.path)}">${t("record")}</button>
+        </div></div>`;
+    });
+    h += `</div>`;
+  });
+  $("#tab-skills").innerHTML = h;
+  const inp = $("#skSearch");
+  if(inp){ inp.oninput = ev => { const v = ev.target.value; renderSkills(v); const i2 = $("#skSearch"); if(i2){ i2.focus(); i2.setSelectionRange(v.length,v.length);} }; }
+}
+
+// ---------- 渲染：项目 / 资源 ----------
+function renderProjects(){
+  let h = `<div class="cards">`;
+  (INV.projects||[]).forEach(x => {
+    h += `<div class="card"><h3>${esc(x.name)}</h3>
+      <div class="purpose">${esc(x.type)}<br><span class="tag g">${esc(x.rel_path)}</span></div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="proj:${esc(x.name)}" data-name="${esc(x.name)}" data-kind="project" data-target="${esc(x.abs_path)}" data-action="open_path">${t("open")}</button>
+        <button data-act="browse" data-path="${esc(x.abs_path)}">${t("browse")}</button>
+        <button data-act="record" data-id="proj:${esc(x.name)}" data-name="${esc(x.name)}" data-kind="project" data-target="${esc(x.abs_path)}">${t("record")}</button>
+      </div></div>`;
+  });
+  h += `</div>`;
+  $("#tab-projects").innerHTML = h;
+}
+
+function renderResources(){
+  let h = `<div class="section-title">${t("resWiki")}</div><div class="cards">`;
+  (INV.resources||[]).forEach(x => {
+    h += `<div class="card"><h3>${esc(x.name)}</h3>
+      <div class="purpose">${esc(x.rel_path)} · ${x.files ?? "?"} ${LANG==="zh"?"文件":"files"}</div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="res:${esc(x.name)}" data-name="${esc(x.name)}" data-kind="resource" data-target="${esc(x.abs_path)}" data-action="open_folder">${t("open")}</button>
+        <button data-act="browse" data-path="${esc(x.abs_path)}">${t("browse")}</button>
+      </div></div>`;
+  });
+  h += `</div>`;
+
+  if((INV.zones||[]).length){
+    h += `<div class="section-title">${t("zonesTitle", {n:INV.zones.length})}</div><div class="cards">`;
+    INV.zones.forEach(z => {
+      h += `<div class="card"><h3>${esc(z.name)}</h3>
+        <div class="purpose">${esc(z.rel_path)} · ${t("filesN",{n:z.files})}</div>
+        <div class="acts">
+          <button class="primary" data-act="launch" data-id="zone:${esc(z.rel_path)}" data-name="${esc(z.name)}" data-kind="zone" data-target="${esc(z.abs_path)}" data-action="open_folder">${t("open")}</button>
+          <button data-act="browse" data-path="${esc(z.abs_path)}">${t("browse")}</button>
+        </div></div>`;
+    });
+    h += `</div>`;
+  }
+  $("#tab-resources").innerHTML = h;
+}
+
+// ---------- 渲染：文件浏览 ----------
+async function loadBrowse(path){
+  switchTab("files", true);
+  const el = $("#tab-files");
+  el.innerHTML = `<div class="hint">${t("reading", {p:esc(path || KB_ROOT)})}</div>`;
+  const d = await api("/api/browse?path=" + encodeURIComponent(path || ""));
+  BROWSE = d;
+  renderBrowse();
+}
+
+function renderBrowse(){
+  const el = $("#tab-files");
+  const d = BROWSE;
+  if(!d || !d.ok){
+    el.innerHTML = `<div class="hint warn">${t("readFail", {m:esc((d && d.msg) || t("unknown"))})}</div>
+      <div class="toolbar"><button class="primary" data-act="browse" data-path="${esc(KB_ROOT)}">${t("backRoot")}</button></div>`;
+    return;
+  }
+  // 面包屑
+  const root = KB_ROOT.replace(/\\/g,"/");
+  const cur = d.path.replace(/\\/g,"/");
+  let crumbs = `<a data-act="browse" data-path="${esc(KB_ROOT)}">${t("crumbRoot")}</a>`;
+  if(cur.toLowerCase().startsWith(root.toLowerCase())){
+    const rel = cur.slice(root.length).split("/").filter(Boolean);
+    let acc = KB_ROOT;
+    rel.forEach(seg => { acc += "\\" + seg; crumbs += `<span class="sep">›</span><a data-act="browse" data-path="${esc(acc)}">${esc(seg)}</a>`; });
+  }else{
+    crumbs += `<span class="sep">›</span><span>${esc(d.path)}</span>`;
+  }
+  let h = `<div class="crumbs">${crumbs}</div>
+    <div class="toolbar">
+      <button data-act="up">${t("up")}</button>
+      <button data-act="refresh">${t("refresh")}</button>
+      <button data-act="launch" data-id="browse-here" data-name="${LANG==="zh"?"当前目录":"Current folder"}" data-kind="folder" data-target="${esc(d.path)}" data-action="open_folder">${t("openExplorer")}</button>
+      <span class="tag g">${t("dirsFiles", {d:d.dirs.length, f:d.files.length})}</span>
+    </div>`;
+
+  if(d.dirs.length){
+    h += `<div class="section-title">${t("dirsTitle", {n:d.dirs.length})}</div><div class="grid2">`;
+    d.dirs.forEach(x => {
+      h += `<div class="dircard" data-act="browse" data-path="${esc(x.path)}"><div class="n">📁 ${esc(x.name)}</div><div class="c">${t("clickEnter")}</div></div>`;
+    });
+    h += `</div>`;
+  }
+  h += `<div class="section-title">${t("filesTitle", {n:d.files.length})}</div>`;
+  if(!d.files.length){
+    h += `<div class="hint">${t("noFiles")}</div>`;
+  }else{
+    h += `<div class="flist">`;
+    d.files.forEach(f => {
+      const ic = /\.(md|txt)$/i.test(f.name) ? "📄" : /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f.name) ? "🖼️"
+        : /\.(mp4|mov|avi|mkv)$/i.test(f.name) ? "🎬" : /\.(mp3|wav|m4a)$/i.test(f.name) ? "🎵"
+        : /\.(py|js|ts|bat|ps1|json|html|css)$/i.test(f.name) ? "🧾" : /\.(pdf|docx|xlsx|pptx)$/i.test(f.name) ? "📊" : "📄";
+      h += `<div class="frow"><span class="ic">${ic}</span>
+        <span class="nm" data-act="launch" data-id="file:${esc(f.path)}" data-name="${esc(f.name)}" data-kind="file" data-target="${esc(f.path)}" data-action="open_file">${esc(f.name)}</span>
+        <span class="sz">${fmtSize(f.size)}</span></div>`;
+    });
+    h += `</div>`;
+  }
+  el.innerHTML = h;
+}
+
+// ---------- 渲染：热度 ----------
+function renderHeat(){
+  if(!HEAT.length){
+    $("#tab-heat").innerHTML = `<div class="hint">${t("heatEmpty")}</div>`;
+    return;
+  }
+  let h = `<div class="hint">${t("heatHint")}</div>`;
+  HEAT.forEach((r, i) => {
+    const max = HEAT[0].heat || 1;
+    const pct = Math.max(4, Math.round(r.heat / max * 100));
+    h += `<div class="heat-row">
+      <div class="heat-rank">${i+1}</div>
+      <div class="heat-bar"><i style="width:${pct}%"></i></div>
+      <div class="heat-info"><div class="nm">${esc(r.name)}${r.used_today ? `<span class="badge-today">${t("today")}</span>` : ''}</div>
+        <div class="mt">${t("heatMeta", {k:esc(r.kind), h:r.heat, c:r.count, l:esc(r.last || "—")})}</div></div>
+      <button class="primary" data-act="launch" data-id="${esc(r.id)}" data-name="${esc(r.name)}" data-kind="${esc(r.kind)}" data-target="${esc(r.target || "")}" data-action="open_path">${t("open")}</button>
+      <button data-act="record" data-id="${esc(r.id)}" data-name="${esc(r.name)}" data-kind="${esc(r.kind)}" data-target="${esc(r.target || "")}">${t("record")}</button>
+    </div>`;
+  });
+  $("#tab-heat").innerHTML = h;
+}
+async function refreshHeat(top){
+  HEAT = top || (await api("/api/heat?limit=30")).items || [];
+  if(CUR_TAB === "heat") renderHeat();
+}
+
+// ---------- 渲染：工具（视频下载 / 微信记录 / 二维码）----------
+function renderTools(){
+  const dl = (KB_ROOT || "").replace(/[\\/]+$/, "") + "\\modules\\视频下载\\downloads";
+  let h = `<div class="hint">${t("toolsHint")}</div>`;
+
+  h += `<div class="tpanel">
+    <h3>${t("videoTitle")}</h3>
+    <div class="sub">${t("videoSub")}</div>
+    <div class="trow">
+      <input id="vidUrl" placeholder="${t("videoPh")}">
+      <button class="primary" data-act="video-dl">${t("startDl")}</button>
+      <button data-act="launch" data-id="video-downloads" data-name="${LANG==="zh"?"视频下载 downloads":"Video downloads"}" data-kind="system" data-target="${esc(dl)}" data-action="open_folder">${t("openDlDir")}</button>
+    </div>
+    <pre class="tlog" id="vidLog"></pre>
+  </div>`;
+
+  h += `<div class="tpanel">
+    <h3>${t("wxTitle")}</h3>
+    <div class="sub">${t("wxSub")}</div>
+    <div class="trow">
+      <input id="wxQ" placeholder="${t("wxPh")}">
+      <button class="primary" data-act="wx-search">${t("wxSearch")}</button>
+      <button data-act="launch" data-id="sys:${LANG==="zh"?"微信聊天记录库":"WeChat logs"}" data-name="${LANG==="zh"?"微信聊天记录库":"WeChat logs"}" data-kind="system" data-target="${esc((KB_ROOT||"") + "\\modules\\微信聊天记录库")}" data-action="open_folder">${t("openModule")}</button>
+    </div>
+    <pre class="tlog" id="wxLog"></pre>
+  </div>`;
+
+  h += `<div class="tpanel">
+    <h3>${t("qrTitle")}</h3>
+    <div class="sub">${t("qrSub")}</div>
+    <div class="trow">
+      <button class="primary" data-act="open-qr">${t("openQr")}</button>
+      <button data-act="launch" data-id="sys:${LANG==="zh"?"二维码系统":"QR system"}" data-name="${LANG==="zh"?"二维码系统":"QR system"}" data-kind="system" data-target="${esc((KB_ROOT||"") + "\\modules\\二维码系统")}" data-action="open_folder">${t("openModule")}</button>
+    </div>
+  </div>`;
+
+  $("#tab-tools").innerHTML = h;
+}
+
+async function startVideoDownload(){
+  const el = $("#vidUrl"), log = $("#vidLog");
+  if(!el || !log) return;
+  const url = (el.value || "").trim();
+  if(!url){ toast(t("needUrl"), true); return; }
+  log.classList.add("show"); log.textContent = t("dlRunning");
+  const r = await post("/api/tool/video", {url});
+  if(!r || !r.ok){ log.textContent = "⚠️ " + ((r && r.msg) || t("dlStartFail")); toast((r && r.msg) || t("dlStartFail"), true); return; }
+  for(let i=0;i<500;i++){
+    await new Promise(s => setTimeout(s, 1200));
+    const st = await api("/api/tool/video/log?tid=" + encodeURIComponent(r.tid));
+    if(!st) return;
+    log.textContent = st.log || t("noLog");
+    log.scrollTop = log.scrollHeight;
+    if(st.status !== "running"){
+      toast(st.status === "done" ? t("dlDone") : t("dlEnd"), st.status !== "done");
+      break;
+    }
+  }
+}
+
+async function runWxSearch(){
+  const el = $("#wxQ"), log = $("#wxLog");
+  if(!el || !log) return;
+  const q = (el.value || "").trim();
+  if(!q){ toast(t("needKw"), true); return; }
+  log.classList.add("show"); log.textContent = t("searching");
+  const r = await post("/api/tool/wx", {q, limit: 20});
+  log.textContent = (r && r.ok) ? (r.text || t("noResult")) : ("⚠️ " + ((r && r.msg) || t("needKw")));
+  if(r && !r.ok) toast(r.msg || t("needKw"), true);
+}
+
+async function openQrTool(){
+  toast(t("qrBooting"));
+  const r = await post("/api/tool/qr", {});
+  if(r && r.ok){ toast(t("qrReady")); window.open(r.url, "_blank"); }
+  else toast((r && r.msg) || t("qrFail"), true);
+}
+
+// ---------- 渲染：全库检索（三链路 RAG）----------
+function renderSearch(){
+  $("#tab-search").innerHTML = `<div class="hint">${t("searchHint")}</div>
+  <div class="tpanel">
+    <h3>${t("searchTitle")}</h3>
+    <div class="sub">${t("searchSub")}</div>
+    <div class="trow">
+      <input id="ragQ" placeholder="${t("ragPh")}">
+      <select id="ragMode">
+        <option value="fused">${t("modeFused")}</option>
+        <option value="kw">${t("modeKw")}</option>
+        <option value="vec">${t("modeVec")}</option>
+        <option value="substr">${t("modeSubstr")}</option>
+      </select>
+      <button class="primary" data-act="rag-search">${t("ragSearch")}</button>
+      <button data-act="rag-ask">${t("ragAsk")}</button>
+    </div>
+    <div id="ragResults"></div>
+    <pre class="tlog" id="ragLog"></pre>
+  </div>`;
+  const inp = $("#ragQ");
+  if(inp) inp.addEventListener("keydown", ev => { if(ev.key === "Enter") runRag(ev.shiftKey); });
+}
+
+async function runRag(ask){
+  const el = $("#ragQ"); if(!el) return;
+  const q = (el.value || "").trim();
+  if(!q){ toast(t("needKw"), true); return; }
+  const mode = $("#ragMode") ? $("#ragMode").value : "fused";
+  const log = $("#ragLog");
+  if(log){ log.classList.add("show"); log.textContent = t("searching"); }
+  const r = await post("/api/rag", {q, mode, topk:8, ask:!!ask});
+  if(log) log.classList.remove("show");
+  if(!r) return;
+  if(!r.ok){ if(log){ log.classList.add("show"); log.textContent = t("ragFail", {m:r.msg || "unknown"}); } return; }
+  if(ask) renderRagAsk(r); else renderRagHits(r);
+}
+
+function renderRagHits(r){
+  const box = $("#ragResults"); if(!box) return;
+  const res = r.results || [];
+  if(!res.length){ box.innerHTML = `<div class="hint warn">${t("ragNone")}</div>`; return; }
+  let h = "";
+  res.forEach(x => {
+    const p = x.path || "";
+    h += `<div class="card">
+      <h3>${x.rank}. ${esc(x.title || p)}</h3>
+      <div class="purpose">${esc(x.snippet || "")}</div>
+      <div class="meta"><span class="tag">${t("score",{s:x.score})}</span><span class="tag g" title="${esc(p)}">${esc(p)}</span>${(x.matched||[]).map(m=>`<span class="tag n">${esc(m)}</span>`).join("")}</div>
+      <div class="acts">
+        <button class="primary" data-act="launch" data-id="rag:${esc(p)}" data-name="${esc(x.title || p)}" data-kind="file" data-target="${esc(p)}" data-action="open_file">${t("openFile")}</button>
+        <button data-act="record" data-id="rag:${esc(p)}" data-name="${esc(x.title || p)}" data-kind="file" data-target="${esc(p)}">${t("record")}</button>
+      </div></div>`;
+  });
+  box.innerHTML = h;
+}
+
+function renderRagAsk(r){
+  const box = $("#ragResults"); if(!box) return;
+  const ctx = r.context || "";
+  const cites = r.citations || [];
+  if(!ctx && !cites.length){ box.innerHTML = `<div class="hint warn">${t("ragNone")}</div>`; return; }
+  let h = `<div class="ragpack"><div class="section-title">${t("askTitle", {n:cites.length})}</div><pre>${esc(ctx)}</pre></div>`;
+  box.innerHTML = h;
+}
+
+// ---------- tab 切换 ----------
+function switchTab(tab, silent){
+  CUR_TAB = tab;
+  [...$("#nav").children].forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  ["overview","entries","systems","skills","projects","resources","tools","files","search","heat"].forEach(t => {
+    const el = $("#tab-" + t); if(el) el.classList.toggle("hidden", t !== tab);
+  });
+  if(tab === "entries") renderEntries();
+  if(tab === "systems") renderSystems($("#sysSearch") ? $("#sysSearch").value : "");
+  if(tab === "skills") renderSkills($("#skSearch") ? $("#skSearch").value : "");
+  if(tab === "projects") renderProjects();
+  if(tab === "resources") renderResources();
+  if(tab === "tools") renderTools();
+  if(tab === "files" && !silent) loadBrowse(BROWSE ? BROWSE.path : KB_ROOT);
+  if(tab === "search") renderSearch();
+  if(tab === "heat") renderHeat();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+async function init(){
+  const inv = await api("/api/inventory");
+  const heat = (await api("/api/heat?limit=30")) || {items:[]};
+  HEAT = heat.items || [];
+  INV = inv || {summary:{},systems:[],skills:[],skill_categories:[],projects:[],resources:[],entries:[],zones:[],sessions:[],file_stats:{}};
+  KB_ROOT = INV.kb_root || "";
+  applyStaticI18n();
+  renderOverview(); renderEntries(); renderSystems(); renderSkills(); renderProjects(); renderResources(); renderTools(); renderSearch(); renderHeat();
+  document.title = t("docTitle", {s:(INV.summary||{}).systems||0, k:(INV.summary||{}).skills||0});
+  // 支持 #entries / #files / #heat / #tools / #search 直达（便于收藏与分享定位）
+  const hash = (location.hash || "").replace("#", "");
+  if(hash && document.querySelector(`#nav button[data-tab="${hash}"]`)){
+    switchTab(hash);
+  }
+  // 自检（?selftest=1）：逐个点导航按钮 + 语言切换 + 检索页签，把结果写进 DOM，供 headless 断言
+  if(new URLSearchParams(location.search).get("selftest") === "1"){
+    const res = [];
+    [...$("#nav").children].forEach(b => {
+      b.click();
+      const t2 = b.dataset.tab;
+      res.push({tab:t2, hasAct:b.dataset.act || "", active:b.classList.contains("active"),
+                shown:!$("#tab-" + t2).classList.contains("hidden"),
+                html:($("#tab-" + t2).innerHTML || "").length});
+    });
+    switchTab("overview");
+    // 语言切换断言：按钮存在、点 EN 导航标签变英文、点回中文恢复
+    const langBtns = [...document.querySelectorAll('[data-act="lang"]')];
+    const navFirst = () => $("#nav").children[0].textContent;
+    const before = navFirst();
+    const enBtn = langBtns.find(b => b.dataset.lang === "en");
+    const zhBtn = langBtns.find(b => b.dataset.lang === "zh");
+    if(enBtn) enBtn.click();
+    const afterEn = navFirst();
+    if(zhBtn) zhBtn.click();
+    res.push({tab:"i18n", langButtons:langBtns.length, switched:before !== afterEn,
+              restored:before === navFirst(), enLabel:afterEn});
+    res.push({tab:"search", hasAct:!!document.querySelector('#nav button[data-tab="search"]'),
+              shown:!$("#tab-search").classList.contains("hidden"),
+              html:($("#tab-search").innerHTML || "").length});
+    const pre = document.createElement("pre");
+    pre.id = "selftest";
+    pre.textContent = JSON.stringify(res);
+    document.body.appendChild(pre);
+  }
+}
+init();
+</script>
+</body>
+</html>

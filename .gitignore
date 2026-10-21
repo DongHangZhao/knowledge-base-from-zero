@@ -1,0 +1,30 @@
+# build / runtime artifacts (never commit)
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec
+usage.json
+
+# 真实扫描清单（含本机绝对路径 / 真实模块名，绝不入库）
+kb-hub/inventory.json
+inventory.json
+
+# 本地检索配置（含本机绝对路径：python 解释器 + kb_rag.py 位置，只在本机生效）
+rag.json
+kb-hub/rag.json
+
+# 数据库 / 索引 / 日志等运行期产物
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# release assets are built locally, uploaded to Releases (not committed)
+kb-hub.exe
+kb-from-zero.zip
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini

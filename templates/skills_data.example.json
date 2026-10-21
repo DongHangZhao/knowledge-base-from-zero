@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-10-21 00:00:00",
+  "generator": "scan_skills.py (example)",
+  "project_root": "~/my-knowledge-base",
+  "count": 3,
+  "sources": [
+    { "category": "提示词资产", "dir": "~/my-knowledge-base/wiki/提示词资产", "found": 1, "exists": true },
+    { "category": "知识库模块", "dir": "~/my-knowledge-base/modules", "found": 1, "exists": true },
+    { "category": "用户级", "dir": "~/.workbuddy/skills", "found": 1, "exists": true }
+  ],
+  "skills": [
+    {
+      "id": "prompt:reuse-copy",
+      "name": "reuse-copy",
+      "title": "reuse-copy",
+      "cn_name": "复用副本不改原版",
+      "cn_reading": "复用一个副本，不改原版",
+      "category": "提示词资产",
+      "source": "提示词资产",
+      "description": "接新任务先查轮子，复制整个模块目录改参数，绝不改原版（可能挂定时任务）。"
+    },
+    {
+      "id": "module:kb-search",
+      "name": "kb-search",
+      "title": "kb-search",
+      "cn_name": "知识库检索",
+      "cn_reading": "知识库检索",
+      "category": "知识库模块",
+      "source": "知识库模块",
+      "description": "把 wiki/ 建索引（FTS5 + 分词），AI 先检索再作答，每句有出处。"
+    },
+    {
+      "id": "user:agnes-image",
+      "name": "agnes-image",
+      "title": "agnes-image",
+      "cn_name": "Agnes 图像生成",
+      "cn_reading": "艾格尼斯图像生成",
+      "category": "用户级",
+      "source": "用户级",
+      "description": "免费文生图，2K/无水印，约 20 秒，封面与配图优先走它。"
+    }
+  ]
+}

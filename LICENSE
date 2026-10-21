@@ -1,0 +1,210 @@
+Knowledge Base From Zero Open License, Version 1.0 (KBL-1.0)
+知识库从零到一开源许可 第 1.0 版
+
+Project : knowledge-base-from-zero — 知识库搭建体系（从零到一）
+Copyright (c) 2026 FallenPetal
+SPDX-License-Identifier: LicenseRef-KBL-1.0
+
+This license is a source-available, noncommercial license with a mandatory
+attribution clause. It is NOT an OSI-approved open source license, because it
+restricts commercial use. Read this file before you copy, fork, modify, or
+redistribute anything in this repository.
+
+中文对照版见 LICENSE.zh-CN.md。两版具有同等效力；如有歧义，以中文版为准。
+
+
+1. DEFINITIONS
+
+1.1 "Work" means all files in this repository — source code, documentation,
+    templates, configuration, images, and any other material — together with
+    any portion of them.
+
+1.2 "Licensor" means FallenPetal, the copyright holder of the Work.
+
+1.3 "You" means any individual or legal entity exercising rights under this
+    License.
+
+1.4 "Noncommercial Purpose" means use that is not primarily intended for or
+    directed toward commercial advantage or monetary compensation. Personal
+    study, research, hobby projects, unpaid teaching, and noncommercial
+    open-source projects all qualify.
+
+1.5 "Commercial Purpose" means any use primarily intended for or directed
+    toward commercial advantage or monetary compensation, including but not
+    limited to the cases listed in Section 4.
+
+1.6 "Derivative Work" means any work that is based on, adapts, translates,
+    modifies, or incorporates a substantial portion of the Work.
+
+1.7 "Attribution Notice" means the notice described in Section 3.1 and
+    Section 3.2.
+
+1.8 "Distribute" means to publish, share, upload, transmit, sublicense, or
+    otherwise make the Work or a Derivative Work available to any third party,
+    whether in source or compiled form, free of charge or not.
+
+
+2. GRANT OF RIGHTS
+
+Subject to full compliance with this License, the Licensor grants You a
+worldwide, royalty-free, non-exclusive, non-transferable license to:
+
+  (a) use, reproduce, and store the Work for Noncommercial Purposes;
+  (b) modify the Work and create Derivative Works for Noncommercial Purposes;
+  (c) distribute the Work and Derivative Works for Noncommercial Purposes;
+  (d) sublicense the rights granted under (a)-(c), provided that every
+      sublicense is bound by this License (or by terms at least as protective
+      of the Licensor), and provided that You pass on this License file.
+
+No rights are granted for Commercial Purposes except as set out in Section 5.
+
+
+3. CONDITIONS
+
+3.1 Retention of notices.
+    You must keep, without alteration, all copyright notices, the license
+    name (KBL-1.0), and the disclaimer contained in the Work, in every copy
+    and every Derivative Work.
+
+3.2 Mandatory attribution and source citation.
+    Any distribution, publication, excerpt, screenshot, course material,
+    article, video, or public demonstration that uses a substantial portion
+    of the Work must carry a clear, human-readable Attribution Notice stating:
+
+      (a) the project name: knowledge-base-from-zero（知识库搭建体系·从零到一）;
+      (b) the author: FallenPetal;
+      (c) the license: KBL-1.0;
+      (d) a link to the original repository, when the Work was obtained from
+          a public repository;
+      (e) the phrase "已修改 / Modified" plus a short description of what You
+          changed, if You distribute a Derivative Work.
+
+    The Attribution Notice must be placed where a reader will actually see it:
+    in the README of a repository, in the description or credits of a video,
+    in the footer or references section of an article, or on the "About" page
+    of a distributed application. A comment buried in source code does not
+    satisfy this condition for non-code distribution.
+
+3.3 No endorsement.
+    You must not state or imply that the Licensor sponsors, endorses, or is
+    affiliated with You or Your use of the Work. The Licensor's name and the
+    project name may be used only to satisfy Section 3.2.
+
+3.4 Share-alike.
+    If You distribute a Derivative Work, You must license it under KBL-1.0 or
+    under terms at least as protective of the Licensor as KBL-1.0. You may not
+    relicense the Work or a Derivative Work under a permissive license (MIT,
+    Apache-2.0, BSD, CC0, public domain, or similar).
+
+3.5 No additional restrictions.
+    You may not impose legal terms or technological measures that restrict
+    others from exercising the rights granted by this License for
+    Noncommercial Purposes.
+
+3.6 Privacy and third-party data.
+    The Work deliberately contains no personal or private data. If You use the
+    Work to build Your own knowledge base, You are solely responsible for
+    complying with applicable privacy and data-protection law regarding the
+    content You put into it. This License grants no rights over third-party
+    content that You may process with the Work.
+
+
+4. COMMERCIAL USE IS NOT GRANTED
+
+Any Commercial Purpose requires a separate written commercial license from the
+Licensor (see Section 5). Without such a license, the following are expressly
+prohibited:
+
+  (a) selling, renting, leasing, or licensing the Work or a Derivative Work,
+      in whole or in part;
+  (b) bundling the Work into a paid product, paid service, paid template pack,
+      or paid course;
+  (c) providing paid consulting, implementation, deployment, customization, or
+      support services whose deliverable substantially consists of the Work;
+  (d) operating the Work or a Derivative Work as a hosted or managed service
+      (SaaS, internal platform-as-a-service, or API) for third parties;
+  (e) deploying the Work in a for-profit organization's production
+      environment, or in any organization's revenue-generating workflow;
+  (f) using the Work to advertise, market, or drive traffic to a commercial
+      offering;
+  (g) using the Work as training data for a commercial model or commercial
+      dataset;
+  (h) removing, obscuring, or replacing the Attribution Notice in order to
+      resell or rebrand the Work.
+
+Evaluation and proof-of-concept use inside an organization is permitted for up
+to thirty (30) consecutive days, provided it is not used in production and does
+not generate revenue. Continued use beyond that window requires a commercial
+license.
+
+
+5. COMMERCIAL LICENSING
+
+A commercial license can be obtained by contacting the Licensor. State Your
+organization, the intended use, the deployment scale, and whether You will
+modify the Work. Commercial terms are negotiated case by case and may include a
+fee. Nothing in this License obliges the Licensor to grant a commercial
+license.
+
+
+6. TERM, TERMINATION, AND CURE
+
+6.1 This License is effective from the moment You exercise any right granted
+    in Section 2 and continues until terminated.
+
+6.2 It terminates automatically if You breach any term of this License.
+
+6.3 If You cure the breach within thirty (30) days after receiving written
+    notice from the Licensor, the License is reinstated as of the date of the
+    breach. If the Licensor does not notify You, the License remains
+    terminated until the Licensor expressly reinstates it in writing.
+
+6.4 On termination, You must stop all use and distribution, and destroy or
+    delete all copies and Derivative Works in Your possession or control,
+    except that You may keep one archival copy solely to document the
+    termination.
+
+6.5 Sections 3, 4, 7, and 8 survive termination.
+
+
+7. DISCLAIMER OF WARRANTY
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. THE LICENSOR
+DOES NOT WARRANT THAT THE WORK IS ERROR-FREE, SECURE, OR FIT FOR ANY PARTICULAR
+PURPOSE. YOU USE THE WORK AT YOUR OWN RISK.
+
+
+8. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR SHALL NOT BE
+LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
+DAMAGES, OR FOR ANY LOSS OF DATA, PROFITS, REVENUE, OR BUSINESS OPPORTUNITY,
+ARISING OUT OF OR RELATED TO THE WORK OR THIS LICENSE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES. THE LICENSOR'S TOTAL AGGREGATE LIABILITY UNDER
+THIS LICENSE SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE WORK, WHICH IS ZERO
+FOR THE NONCOMMERCIAL GRANT.
+
+
+9. MISCELLANEOUS
+
+9.1 Severability. If any provision is held unenforceable, it is modified to the
+    minimum extent necessary to make it enforceable, and the remaining
+    provisions stay in force.
+
+9.2 No waiver. Failure to enforce a provision is not a waiver of it.
+
+9.3 Entire agreement. This License, together with NOTICE, is the entire
+    agreement between You and the Licensor regarding the Work.
+
+9.4 Language. This License is published in English and Chinese. Both versions
+    have equal effect. In case of ambiguity or conflict, the Chinese version
+    governs.
+
+9.5 Third-party components. Third-party dependencies bundled with or required
+    by the Work remain under their own licenses; see NOTICE. This License does
+    not alter those terms.
+
+
+— End of KBL-1.0 —
