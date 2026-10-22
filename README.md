@@ -189,7 +189,7 @@ my-knowledge-base/
 
 ## 八、零隐私承诺
 
-本项目在发布前经过逐文件扫描（[`tools/privacy_scan.py`](tools/privacy_scan.py)），**刻意不含**：
+本项目在发布前经过逐文件扫描（[`tools/privacy_scan.py`](tools/privacy_scan.py)，其二进制判定逻辑由 [`tools/test_privacy_binary.py`](tools/test_privacy_binary.py) 回归测试守护），**刻意不含**：
 
 - ❌ 作者真实姓名、学号、联系方式、账号、密钥、Token、Cookie；
 - ❌ 真实项目名、客户名、公司名、工作经历细节；

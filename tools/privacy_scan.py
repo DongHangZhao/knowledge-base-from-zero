@@ -79,6 +79,10 @@ TEXT_EXT = {".md", ".txt", ".py", ".bat", ".cmd", ".ps1", ".sh", ".html", ".htm"
 
 BIN_EXT = {".exe", ".dll", ".so", ".bin", ".pyd"}
 
+# 构建产物：本机留存、不入库也不外发（.gitignore 已覆盖 *.log / *.spec）。
+# 它们含本机绝对路径，扫出来全是噪声，因此识别为已知产物并降级 INFO。
+BUILD_ARTIFACT_EXT = {".log", ".spec", ".pyc", ".manifest"}
+
 SKIP_DIRS = {".git", "__pycache__", "node_modules", ".idea", ".vscode", "build", "dist"}
 
 # 扫描器自身：规则定义里必然含有敏感模式的正则原文（如用户名规则），
@@ -136,7 +140,30 @@ NOISY_IN_BINARY = {"电子邮箱": 0.9, "Windows 盘符路径": 0.9,
                    "中国大陆手机号": 0.6}
 
 
-def scan_blob(text, rel, rules, terms, hits, binary=False):
+def term_in_raw(raw, t):
+    """原始字节通道：在二进制里搜敏感词的真实编码字节。
+
+    返回命中的编码名（utf-8 / gbk），未命中返回 None。
+
+    为什么二进制必须走这一层：解码流（bytes.decode(enc, "ignore")）在遇到
+    无效字节时会直接丢弃，于是原本**不相邻**的 ASCII 字节被拼接成了敏感词
+    —— 实测 9MB 的 kb-hub.exe 用 GBK 解码后凭空凑出 "JZXT"，而原始字节流
+    里零命中（上下文是 `V3쬊;k>jZxt~o` 这类 GBK 解码噪声）。
+    原始字节是充要的：任何被打进 exe 的文本常量，其编码字节必然在文件里。
+    """
+    if not raw:
+        return None
+    for enc in ("utf-8", "gbk"):
+        try:
+            b = t.encode(enc)
+        except UnicodeEncodeError:
+            continue
+        if b and b in raw:
+            return enc
+    return None
+
+
+def scan_blob(text, rel, rules, terms, hits, binary=False, raw=None):
     for name, pat, level in rules:
         for m in re.finditer(pat, text):
             val = m.group(0)
@@ -160,8 +187,21 @@ def scan_blob(text, rel, rules, terms, hits, binary=False):
         idx = low.find(tl)
         if idx < 0:
             continue
-        hits.append({"file": rel, "rule": "自定义词表", "level": "BLOCK",
-                     "match": t, "context": ctx(text, idx, idx + len(t))})
+        c = ctx(text, idx, idx + len(t))
+        if binary:
+            # 二进制通道：解码流命中不算数，必须过原始字节确认（见 term_in_raw 说明）。
+            # 只有原始字节里真有这个词 → BLOCK；否则降级 INFO，不阻塞发布。
+            enc = term_in_raw(raw, t)
+            if enc is None:
+                hits.append({"file": rel, "level": "INFO", "match": t,
+                             "rule": "自定义词表（仅解码流命中·疑似二进制误报）",
+                             "context": c})
+                continue
+            hits.append({"file": rel, "rule": "自定义词表", "level": "BLOCK",
+                         "match": "%s（原始字节 %s 命中）" % (t, enc), "context": c})
+        else:
+            hits.append({"file": rel, "rule": "自定义词表", "level": "BLOCK",
+                         "match": t, "context": c})
 
 
 def scan_zip(path, rel, rules, terms, hits):
@@ -185,7 +225,8 @@ def scan_zip(path, rel, rules, terms, hits):
                 # zip 里的 md/文本成员按文本扫描（否则中文上下文会被当成二进制噪声过滤掉）
                 is_text = os.path.splitext(nm)[1].lower() in TEXT_EXT
                 for enc in ("utf-8", "gbk"):
-                    scan_blob(raw.decode(enc, "ignore"), sub, rules, terms, hits, binary=not is_text)
+                    scan_blob(raw.decode(enc, "ignore"), sub, rules, terms, hits,
+                              binary=not is_text, raw=raw)
             for nm in bad:
                 hits.append({"file": rel + "!" + nm, "rule": "压缩包内含媒体/文档文件",
                              "level": "BLOCK", "match": nm,
@@ -222,8 +263,10 @@ def scan_file(path, rel, rules, terms, hits, allow_media=False):
             data = f.read()
         # 只按 UTF-8 / GBK 解：PyInstaller 内嵌的常量就是这两种，
         # UTF-16LE 解出来的随机字节最容易凑出假邮箱，收益极低。
+        # raw=data 传原始字节供词表分支做二次确认，挡掉解码噪声误报。
         for enc in ("utf-8", "gbk"):
-            scan_blob(data.decode(enc, "ignore"), rel, rules, terms, hits, binary=True)
+            scan_blob(data.decode(enc, "ignore"), rel, rules, terms, hits,
+                      binary=True, raw=data)
         return
 
     if ext in TEXT_EXT or ext == "" or name in ("LICENSE", "NOTICE", ".gitignore"):
@@ -233,6 +276,13 @@ def scan_file(path, rel, rules, terms, hits, allow_media=False):
         except Exception as e:
             hits.append({"file": rel, "rule": "读取失败", "level": "WARN",
                          "match": str(e)[:60], "context": ""})
+        return
+
+    if ext in BUILD_ARTIFACT_EXT:
+        # PyInstaller 等构建产物：被 .gitignore 排除、不入库也不外发，
+        # 但内容里必然含本机绝对路径（如 F:/.../kb-hub.spec），扫了也是噪声。
+        hits.append({"file": rel, "rule": "构建产物（已排除，不入库）", "level": "INFO",
+                     "match": name, "context": "被 .gitignore 排除，仅本机留存"})
         return
 
     hits.append({"file": rel, "rule": "未知扩展名（需人工确认）", "level": "WARN",

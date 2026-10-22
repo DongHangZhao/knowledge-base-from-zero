@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.3.0** (2026-10-21)
+Current version: **v1.3.1** (2026-10-22)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 
@@ -122,6 +122,7 @@ with all paths written as `~/my-knowledge-base` and every `exists` set to `false
 
 | Version | Date | Changes |
 |---|---|---|
+| v1.3.1 | 2026-10-22 | The search tab gains a **rerank stage** (bge-reranker-v2-m3, a local cross-encoder; Hybrid → RRF → rerank → top-k, the 2026 production gold standard): result cards show the rerank score, short queries (≤4 characters) skip rerank to preserve literal-lookup sensitivity, and an all-low-score pool reports "nothing found in the library" instead of returning edge-case documents; zero-hit / edge-case queries show a ⚠️ banner (rerank threshold + query-term coverage); "Ask KB" shows warnings and the citation table; hub exe rebuilt |
 | v1.3.0 | 2026-10-21 | New **🔍 KB Search** tab (three-pipeline RAG: FTS5 keywords + BGE semantic vectors + character-level substring; "Ask KB" assembles a cited context pack), new `/api/rag` endpoint (config-driven, degrades gracefully when unconfigured); **one-click Chinese/English UI switch** (all UI copy in an I18N dictionary, persisted in localStorage, selftest extended with language assertions); tabs 9 → 10 |
 | v1.2.0 | 2026-10-21 | **Full bilingual documentation**: every document now ships in Chinese and English with cross-links (README, RELEASE, NOTICE, nine docs, six templates, hub README); added a language switcher to each file; privacy term list extended to catch name fragments, which surfaced and removed 4 remaining leaks (2 code comments, 1 in the skill-workbench doc, 1 real scale figure in the task list) |
 | v1.1.0 | 2026-10-21 | License changed from MIT to **KBL-1.0** (non-commercial + mandatory attribution + share-alike); full de-identification (example inventory rewritten, real inventory removed from the repo); added `docs/dual-pipeline.en.md` plus a minimal runnable implementation; added `tools/privacy_scan.py` and a pre-release gate; hub overview now shows the four-zone + dual-pipeline diagram and example-mode banner |

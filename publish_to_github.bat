@@ -5,7 +5,7 @@ rem  publish_to_github.bat  (UTF-8, chcp 65001 required)
 rem  One-shot publisher for the "knowledge-base-from-zero" repo.
 rem
 rem  Flow:  privacy scan -> git init/commit -> create public repo
-rem         -> push -> verify assets -> create Release v1.3.0
+rem         -> push -> verify assets -> create Release v1.3.1
 rem
 rem  Prereqs:
 rem    1) run "gh auth login" once (needs YOUR GitHub account)
@@ -18,7 +18,7 @@ title knowledge-base-from-zero publisher
 set "ROOT=%~dp0"
 set "REPO_NAME=knowledge-base-from-zero"
 set "REPO_DESC=知识库搭建体系：从零到一完整搭建（方法论 + 门户 + 示例，去隐私化）"
-set "TAG=v1.3.0"
+set "TAG=v1.3.1"
 
 rem resolve gh: PATH first, then common install locations
 set "GH=gh"
@@ -64,7 +64,7 @@ if not exist ".git" ( git init -q )
 git add -A
 git diff --cached --quiet
 if errorlevel 1 (
-  git commit -q -m "release: %TAG% 全库检索页签（三链路 RAG）+ 界面中英切换 + 全量中英双语文档"
+  git commit -q -m "release: %TAG% 检索 rerank 精排层 + 零命中警示 + 构建入口统一 + 中英双语同步"
 ) else (
   echo   (nothing to commit)
 )

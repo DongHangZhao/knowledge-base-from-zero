@@ -190,7 +190,7 @@ For commercial licensing, open an issue describing your organization, intended u
 
 ## 8. Zero-privacy commitment
 
-Every file was scanned before publication ([`tools/privacy_scan.py`](tools/privacy_scan.py)). This repository deliberately contains none of:
+Every file was scanned before publication ([`tools/privacy_scan.py`](tools/privacy_scan.py), whose binary-detection logic is guarded by the regression test [`tools/test_privacy_binary.py`](tools/test_privacy_binary.py)). This repository deliberately contains none of:
 
 - ❌ the author's real name, student ID, contact details, accounts, keys, tokens or cookies;
 - ❌ real project names, client names, company names or employment details;

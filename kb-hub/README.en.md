@@ -42,7 +42,10 @@ The "🔍 KB Search" tab calls `/api/rag`, executed by `kb_rag.py` on the knowle
 - **Pipeline B · keywords**: SQLite FTS5 + jieba tokenization (whole-doc and chunk granularities fused with RRF) — exact at the word level
 - **Pipeline C · semantic vectors**: BGE-small-zh embeddings over all chunks — finds it even when you phrase it differently
 - **Fallback · character level**: FTS5 trigram for ≥3 characters, LIKE with a timeout breaker for 1-2 characters — **every character, every sentence is findable**
+- **Rerank · cross-encoder**: bge-reranker-v2-m3 runs locally over the top-N fused candidates (2026 production gold standard: Hybrid → RRF → rerank → top-k); **short queries (≤4 characters) skip rerank** to preserve literal-lookup sensitivity; when every candidate scores below the threshold the search reports "nothing found in the library" instead of returning edge-case documents
 - **"Ask KB"**: assembles the top-k hits into a numbered, cited markdown context pack (ready to feed an AI); on zero hits it explicitly says "nothing found in the library" instead of inventing an answer
+
+The `rerank X.XX` chip on a result card is the cross-encoder score; the yellow banner at the top is a zero-hit / edge-case warning (triggered either by the rerank threshold or by query-term coverage).
 
 Configuration (either way; **local only, never committed**):
 

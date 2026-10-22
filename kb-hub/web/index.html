@@ -227,7 +227,7 @@ zh:{
   modeFused:"融合（推荐）", modeKw:"关键词", modeVec:"向量", modeSubstr:"字级",
   ragSearch:"检索", ragAsk:"问知识库", searching:"⏳ 检索中…",
   ragFail:"⚠️ 检索失败：{m}", ragNone:"库内未检索到相关内容",
-  askTitle:"📦 上下文包（{n} 条引用）", openFile:"打开文件", score:"相关度 {s}",
+  askTitle:"📦 上下文包（{n} 条引用）", openFile:"打开文件", score:"相关度 {s}", rerankChip:"重排 {s}",
   reqFail:"请求失败：{m}", recorded:"已记录一次 · 热度 +1",
   needUrl:"先贴一条视频号分享链接",
   dlRunning:"⏳ 正在解析并下载…（最长等 10 分钟，实时回显）",
@@ -295,7 +295,7 @@ en:{
   modeFused:"Fused (recommended)", modeKw:"Keywords", modeVec:"Vector", modeSubstr:"Substring",
   ragSearch:"Search", ragAsk:"Ask KB", searching:"⏳ Searching…",
   ragFail:"⚠️ Search failed: {m}", ragNone:"Nothing found in the library",
-  askTitle:"📦 Context pack ({n} citations)", openFile:"Open file", score:"score {s}",
+  askTitle:"📦 Context pack ({n} citations)", openFile:"Open file", score:"score {s}", rerankChip:"rerank {s}",
   reqFail:"Request failed: {m}", recorded:"Recorded · heat +1",
   needUrl:"Paste a share link first",
   dlRunning:"⏳ Resolving & downloading… (up to 10 min, live output)",
@@ -801,21 +801,26 @@ async function runRag(ask){
   const r = await post("/api/rag", {q, mode, topk:8, ask:!!ask});
   if(log) log.classList.remove("show");
   if(!r) return;
-  if(!r.ok){ if(log){ log.classList.add("show"); log.textContent = t("ragFail", {m:r.msg || "unknown"}); } return; }
+  if(!r.ok){ if(log){ log.classList.add("show"); log.textContent = t("ragFail", {m:r.msg || "unknown"}) + (r.note ? " ｜ " + r.note : ""); } return; }
   if(ask) renderRagAsk(r); else renderRagHits(r);
+}
+
+// note = 后端链路警示（如「全部命中均不含查询关键词，疑似语义擦边」）——零命中风险必须可见
+function ragNoteHtml(r){
+  return (r && r.note) ? `<div class="hint warn">⚠️ ${esc(r.note)}</div>` : "";
 }
 
 function renderRagHits(r){
   const box = $("#ragResults"); if(!box) return;
   const res = r.results || [];
-  if(!res.length){ box.innerHTML = `<div class="hint warn">${t("ragNone")}</div>`; return; }
-  let h = "";
+  if(!res.length){ box.innerHTML = ragNoteHtml(r) + `<div class="hint warn">${t("ragNone")}</div>`; return; }
+  let h = ragNoteHtml(r);
   res.forEach(x => {
     const p = x.path || "";
     h += `<div class="card">
       <h3>${x.rank}. ${esc(x.title || p)}</h3>
       <div class="purpose">${esc(x.snippet || "")}</div>
-      <div class="meta"><span class="tag">${t("score",{s:x.score})}</span><span class="tag g" title="${esc(p)}">${esc(p)}</span>${(x.matched||[]).map(m=>`<span class="tag n">${esc(m)}</span>`).join("")}</div>
+      <div class="meta"><span class="tag">${t("score",{s:x.score})}</span>${x.rerank_score!=null?`<span class="tag s" title="Cross-Encoder 精排分">${t("rerankChip",{s:Number(x.rerank_score).toFixed(2)})}</span>`:""}<span class="tag g" title="${esc(p)}">${esc(p)}</span>${(x.matched||[]).map(m=>`<span class="tag n">${esc(m)}</span>`).join("")}</div>
       <div class="acts">
         <button class="primary" data-act="launch" data-id="rag:${esc(p)}" data-name="${esc(x.title || p)}" data-kind="file" data-target="${esc(p)}" data-action="open_file">${t("openFile")}</button>
         <button data-act="record" data-id="rag:${esc(p)}" data-name="${esc(x.title || p)}" data-kind="file" data-target="${esc(p)}">${t("record")}</button>
@@ -828,8 +833,8 @@ function renderRagAsk(r){
   const box = $("#ragResults"); if(!box) return;
   const ctx = r.context || "";
   const cites = r.citations || [];
-  if(!ctx && !cites.length){ box.innerHTML = `<div class="hint warn">${t("ragNone")}</div>`; return; }
-  let h = `<div class="ragpack"><div class="section-title">${t("askTitle", {n:cites.length})}</div><pre>${esc(ctx)}</pre></div>`;
+  if(!ctx && !cites.length){ box.innerHTML = ragNoteHtml(r) + `<div class="hint warn">${t("ragNone")}</div>`; return; }
+  let h = ragNoteHtml(r) + `<div class="ragpack"><div class="section-title">${t("askTitle", {n:cites.length})}</div><pre>${esc(ctx)}</pre></div>`;
   box.innerHTML = h;
 }
 
