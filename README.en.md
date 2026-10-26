@@ -30,7 +30,7 @@ What's in this repository:
 | Step-by-step guide | this file `README.en.md` | You are reading it |
 | KB Hub (frontend + backend) | `kb-hub/` | Zero-dependency local web dashboard aggregating systems / skills / projects |
 | Example templates | `templates/` | Blank starting points for AGENTS.md / wiki / modules / prompt assets |
-| Advanced docs | `docs/` | Architecture, **dual-pipeline**, module overview, skill workbench, collaboration, licensing, FAQ |
+| Advanced docs | `docs/` | Architecture, **dual-pipeline**, **retrieval design and evaluation**, module overview, skill workbench, collaboration, licensing, FAQ |
 | Release & install guide | `RELEASE.en.md` | How to use the zip / exe from Releases |
 | Policy enforcement tools | `tools/` | Example inventory generator, privacy scanner, bilingual checker |
 
@@ -214,6 +214,7 @@ When you build your own, keep private data local: **never in git, never in the c
 
 - Why the architecture is split this way → [`docs/architecture.en.md`](docs/architecture.en.md)
 - **How to implement index + SQLite** → [`docs/dual-pipeline.en.md`](docs/dual-pipeline.en.md)
+- **Retrieval layer design and evaluation** (three retrieval paths + RRF k tuning + a failed rerank post-mortem + the evaluation method + engineering, with real A/B numbers) → [`docs/retrieval-engine.en.md`](docs/retrieval-engine.en.md)
 - What reusable modules look like → [`docs/modules-overview.en.md`](docs/modules-overview.en.md)
 - How to choose and declare a license → [`docs/open-source-policy.en.md`](docs/open-source-policy.en.md)
 - Common questions → [`docs/faq.en.md`](docs/faq.en.md)

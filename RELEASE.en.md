@@ -2,11 +2,24 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.3.1** (2026-10-22)
+Current version: **v1.4.0** (2026-10-26)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 
 This repository offers two download options under **Releases**. Pick one.
+
+## What's new in v1.4.0
+
+New document: **Designing a Retrieval Layer, and Proving It Works** — [`docs/retrieval-engine.en.md`](docs/retrieval-engine.en.md) / [`docs/检索层设计与评测.md`](docs/检索层设计与评测.md), published in both languages. It is the first document here to answer two questions together: how a retrieval layer should be designed, and how you prove that it works.
+
+- **Three retrieval paths**: FTS5 keywords plus dense vectors plus a character-level trigram fallback — and why one path is never enough;
+- **Tuning the RRF k parameter on real data**: the `k=60` that tutorials everywhere copy is wrong for a small corpus; measured 60 down to 2 (Recall@5 82.0% → 89.0%);
+- **A full post-mortem of a rerank stage that made things worse**: adding a Cross-Encoder dropped Recall@5 from 88.0% to 76.0%, and the cause was not the model but the summaries it was fed. The fix works (low-confidence degradations 32 → 1) but still does not pay off, so the code ships disabled by default;
+- **An evaluation method built on 100 hand-labelled queries**: how to read the three metrics, how to run an A/B, why a null test comes first, and why every run needs a fingerprint;
+- **Engineering practices**: a concurrent write lock (paid for with a real incident), a backup health gate, and a regression suite that runs as one command;
+- **Selected pitfalls**: Chinese titles that never entered the index, trigram matching that fails on two-character queries, comments that contradict the code, and a one-letter filename typo that pulled tens of gigabytes into a snapshot.
+
+> Every number comes from a real run (4,152 documents / 44,479 chunks), and every key claim records how it was verified.
 
 ## Assets
 
@@ -122,6 +135,7 @@ with all paths written as `~/my-knowledge-base` and every `exists` set to `false
 
 | Version | Date | Changes |
 |---|---|---|
+| v1.4.0 | 2026-10-26 | New document, **Designing a Retrieval Layer, and Proving It Works** (both languages): the three-path retrieval design, tuning RRF k on real data (60 → 2), a full post-mortem of a rerank stage that made results worse (degradations 32 → 1; code kept but disabled by default), an evaluation method built on 100 labelled queries plus A/B discipline, engineering practices (concurrent write lock / backup health gate / regression suite), and selected pitfalls; README doc index updated |
 | v1.3.1 | 2026-10-22 | The search tab gains a **rerank stage** (bge-reranker-v2-m3, a local cross-encoder; Hybrid → RRF → rerank → top-k, the 2026 production gold standard): result cards show the rerank score, short queries (≤4 characters) skip rerank to preserve literal-lookup sensitivity, and an all-low-score pool reports "nothing found in the library" instead of returning edge-case documents; zero-hit / edge-case queries show a ⚠️ banner (rerank threshold + query-term coverage); "Ask KB" shows warnings and the citation table; hub exe rebuilt |
 | v1.3.0 | 2026-10-21 | New **🔍 KB Search** tab (three-pipeline RAG: FTS5 keywords + BGE semantic vectors + character-level substring; "Ask KB" assembles a cited context pack), new `/api/rag` endpoint (config-driven, degrades gracefully when unconfigured); **one-click Chinese/English UI switch** (all UI copy in an I18N dictionary, persisted in localStorage, selftest extended with language assertions); tabs 9 → 10 |
 | v1.2.0 | 2026-10-21 | **Full bilingual documentation**: every document now ships in Chinese and English with cross-links (README, RELEASE, NOTICE, nine docs, six templates, hub README); added a language switcher to each file; privacy term list extended to catch name fragments, which surfaced and removed 4 remaining leaks (2 code comments, 1 in the skill-workbench doc, 1 real scale figure in the task list) |

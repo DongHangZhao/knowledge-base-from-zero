@@ -19,6 +19,10 @@ PAIRS = [
     ("docs/任务清单.md", "docs/task-list.en.md"),
     ("docs/FAQ.md", "docs/faq.en.md"),
     ("docs/开源守则.md", "docs/open-source-policy.en.md"),
+    # v1.4.0 新增。加这一行之前它是「假绿」：文件确实生成并存在，
+    # 但 PAIRS 里没有它 → check_bilingual 报到 19/19 全过，其实根本没校验这一对。
+    # 凡是新增双语文档，必须同步加进本表，否则发布闸门覆盖不到。
+    ("docs/检索层设计与评测.md", "docs/retrieval-engine.en.md"),
     ("templates/AGENTS.example.md", "templates/AGENTS.example.en.md"),
     ("templates/modules/README.example.md", "templates/modules/README.example.en.md"),
     ("templates/wiki/可复用模块/总览.example.md", "templates/wiki/可复用模块/总览.example.en.md"),
