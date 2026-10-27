@@ -18,6 +18,7 @@ New document: **Designing a Retrieval Layer, and Proving It Works** — [`docs/r
 - **An evaluation method built on 100 hand-labelled queries**: how to read the three metrics, how to run an A/B, why a null test comes first, and why every run needs a fingerprint;
 - **Engineering practices**: a concurrent write lock (paid for with a real incident), a backup health gate, and a regression suite that runs as one command;
 - **Selected pitfalls**: Chinese titles that never entered the index, trigram matching that fails on two-character queries, comments that contradict the code, and a one-letter filename typo that pulled tens of gigabytes into a snapshot.
+- **User guide**: also new, *Using This Project* ([`docs/usage.en.md`](docs/usage.en.md) / [`docs/使用指南.md`](docs/使用指南.md)) — specifically what to do once you have the repo: how to open the hub, scan your own base, and let AI take over your knowledge.
 
 > Every number comes from a real run (4,152 documents / 44,479 chunks), and every key claim records how it was verified.
 
@@ -29,6 +30,8 @@ New document: **Designing a Retrieval Layer, and Proving It Works** — [`docs/r
 | Hub executable | `kb-hub.exe` | People who just want the hub without installing Python | Zero-dependency single file; double-click opens `http://127.0.0.1:8799/` |
 
 > Both assets are accompanied by this guide (`RELEASE.en.md`) and link to the repository home page `README.md`.
+
+> **What to do once you have it?** See [`docs/usage.en.md`](docs/usage.en.md) (English) / [`docs/使用指南.md`](docs/使用指南.md) (中文): how to open the hub, scan your own base, and let AI take over your knowledge.
 
 ---
 

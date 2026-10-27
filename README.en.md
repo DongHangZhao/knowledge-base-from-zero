@@ -31,6 +31,7 @@ What's in this repository:
 | KB Hub (frontend + backend) | `kb-hub/` | Zero-dependency local web dashboard aggregating systems / skills / projects |
 | Example templates | `templates/` | Blank starting points for AGENTS.md / wiki / modules / prompt assets |
 | Advanced docs | `docs/` | Architecture, **dual-pipeline**, **retrieval design and evaluation**, module overview, skill workbench, collaboration, licensing, FAQ |
+| User guide | `docs/usage.en.md` | What to actually do once you have the repo (hub / templates / tools / letting AI take over) |
 | Release & install guide | `RELEASE.en.md` | How to use the zip / exe from Releases |
 | Policy enforcement tools | `tools/` | Example inventory generator, privacy scanner, bilingual checker |
 
