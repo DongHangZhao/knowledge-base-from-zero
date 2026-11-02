@@ -37,6 +37,7 @@ import bge_reranker    # noqa: E402
 import ingest_raw      # noqa: E402
 import build_task      # noqa: E402  T12：多会话构建队列
 import vec_tables      # noqa: E402  #37：四表一致性的唯一口径（缺失 id / 补 m3 / 断言）
+import query_rewrite   # noqa: E402  #39：查询改写三层（纯函数，零依赖）
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA_PREFIX = "wiki/媒体/"
@@ -443,17 +444,30 @@ def _vec_route_m3(q):
 
 
 def search_unified(conn, query, topk=5, mode="fused", rerank=True,
-                   since=None, path_prefix=None):
+                   since=None, path_prefix=None, rewrite=None):
     """三链路 RRF 融合。mode: fused(全开) / kw / vec / substr。
     rerank: RRF 融合后过 Cross-Encoder 精排（仅 fused 模式生效，默认开）。
     since: 'YYYY-MM-DD' 或 epoch 秒——只返 mtime >= 该日期的文档（T3 元数据过滤）。
     path_prefix: 只返 path 以该前缀开头的文档（如 'wiki/技术'）。
-    两个过滤都在**融合后、rerank 前**执行（理由见下方注释）。"""
+    两个过滤都在**融合后、rerank 前**执行（理由见下方注释）。
+    rewrite: 改写档位 off|l0|l1|l2（#39）。None = 读 `KB_REWRITE`（默认 l0）；
+             **`rewrite="off"` 时行为与改造前逐位一致**（回滚开关，零代码）。
+
+    🔴 改写只作用于**召回**：精排（rerank）、摘要补齐（_enrich）、查询日志（log_query）
+       一律用**原始 q**。否则精排分被同义词串稀释、查询日志也失去可分析性。
+    """
     t0 = time.time()
     q = (query or "").strip()
-    q_exp = expand_alias(q)   # D5 别名表：查询时扩展同义词，零重编码；失败回退原 q
     if not q:
         return [], "查询为空"
+    # #39 改写计划（纯函数，不碰 DB）。off 档 = 原文 + 别名扩展（D5 老行为）。
+    # 🔴 别名扩展先单独算一次：它是 D5 老能力，note 只该在**它真的改了查询**时出现。
+    #    若直接用 subs[0][0] 与 q 比较，l0 拆分会把「知识库 和 wiki…」的
+    #    subs[0]（"知识库"）误报成"别名扩展"—— 一条会误导排障的假 note。
+    q_alias = expand_alias(q)
+    plan = query_rewrite.plan(q, level=rewrite, alias_fn=lambda _q: q_alias)
+    subs = plan.subqueries or [(q, 1.0)]
+    q_exp = subs[0][0]
     # --since 归一化成 epoch 秒（CLI 层已校验过格式，这里双保险 + 兼容传 epoch）
     since_ts, since_txt = None, ""
     if since is not None:
@@ -465,9 +479,15 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             # epoch 是当天 00:00 本地时间，round-trip 回日期字符串是精确的
             since_txt = datetime.datetime.fromtimestamp(since_ts).strftime("%Y-%m-%d")
     rrf, meta, sources = {}, {}, {}
-    notes = []
-    if q_exp != q:
-        notes.append("D5 别名扩展: %s" % q_exp)
+    notes = list(plan.notes)
+    if plan.level == 0:
+        # off 档：note 文本保持改造前的原样（便于 off/on 两份输出逐位对比）
+        if q_alias != q:
+            notes.append("D5 别名扩展: %s" % q_alias)
+    else:
+        notes.append("改写 L%d：%d 子查询" % (plan.level, len(subs)))
+        if q_alias != q:
+            notes.append("D5 别名扩展: %s" % q_alias)
 
     k = rrf_k()   # 运行时解析（KB_RRF_K 可配，默认 2），避免导入时绑定吃不到环境变量
 
@@ -490,30 +510,49 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
                 meta[it["doc_id"]] = it
             sources.setdefault(it["doc_id"], set()).add(path_name)
 
-    if mode in ("fused", "kw"):
+    # 🔴 #39：三路召回按 plan.subqueries 循环，权重 = 路权重 × 子查询权重。
+    #    off 档 subs=[(q_exp,1.0)]，`w * 1.0 == w`（float 乘 1.0 精确），且循环次序
+    #    仍是 kw→vec→substr，与改造前**逐位一致**。
+    use_m3_route = _vec_route_m3(q)
+    route_noted = [False]
+
+    for sub, w_sub in subs:
+        if mode in ("fused", "kw"):
+            try:
+                add(kb_index.search_fts_fused(conn, sub, topk * 2), "kw",
+                    _w("KB_W_KW", W_KW) * w_sub)
+            except Exception as e:
+                notes.append("kw 路失败: %s" % str(e)[:60])
+        if mode in ("fused", "vec"):
+            try:
+                # T1 语言路由（默认关闭）：KB_VEC_ROUTE 开启且查询为外文时切 bge-m3 多语塔；
+                # 否则走现状 small-zh。开关关闭时本分支与历史行为逐位相同。
+                if use_m3_route:
+                    add(bge_encoder.search_bge_m3(conn, sub, topk * 2), "vec",
+                        _w("KB_W_VEC", W_VEC) * w_sub)
+                else:
+                    add(bge_encoder.search_bge(conn, sub, topk * 2), "vec",
+                        _w("KB_W_VEC", W_VEC) * w_sub)
+                if not route_noted[0]:      # 只记一次（3 条子查询不该刷 3 行）
+                    notes.append("vec 路由: m3" if use_m3_route else "vec 路由: small-zh")
+                    route_noted[0] = True
+            except Exception as e:
+                notes.append("vec 路失败: %s" % str(e)[:60])
+        if mode in ("fused", "substr"):
+            items, note = search_substr(conn, sub, topk * 2)
+            if note and note not in notes:
+                notes.append(note)
+            add(items, "substr", _w("KB_W_SUBSTR", W_SUBSTR) * w_sub)
+
+    # #39 L2：HyDE 假设答案单独走一路 vec（权重 KB_W_HYDE=0.8，失败仅记 note）。
+    # 只并入 vec 路、不改关键词路：假设答案是"假文档"，让它参与精排/关键词匹配
+    # 只会引入噪声。失败绝不阻断——检索照常返回 L1 的结果。
+    if plan.hyde and mode in ("fused", "vec"):
         try:
-            add(kb_index.search_fts_fused(conn, q_exp, topk * 2), "kw", _w("KB_W_KW", W_KW))
+            add(bge_encoder.search_bge(conn, plan.hyde, topk * 2), "vec_hyde",
+                _w("KB_W_HYDE", 0.8))
         except Exception as e:
-            notes.append("kw 路失败: %s" % str(e)[:60])
-    if mode in ("fused", "vec"):
-        try:
-            # T1 语言路由（默认关闭）：KB_VEC_ROUTE 开启且查询为外文时切 bge-m3 多语塔；
-            # 否则走现状 small-zh。开关关闭时本分支与历史行为逐位相同。
-            if _vec_route_m3(q):
-                add(bge_encoder.search_bge_m3(conn, q_exp, topk * 2), "vec",
-                    _w("KB_W_VEC", W_VEC))
-                notes.append("vec 路由: m3")
-            else:
-                add(bge_encoder.search_bge(conn, q_exp, topk * 2), "vec",
-                    _w("KB_W_VEC", W_VEC))
-                notes.append("vec 路由: small-zh")
-        except Exception as e:
-            notes.append("vec 路失败: %s" % str(e)[:60])
-    if mode in ("fused", "substr"):
-        items, note = search_substr(conn, q_exp, topk * 2)
-        if note:
-            notes.append(note)
-        add(items, "substr", _w("KB_W_SUBSTR", W_SUBSTR))
+            notes.append("HyDE 召回失败，已忽略: %s" % str(e)[:60])
 
     # ---- 元数据过滤（T3）：融合之后、rerank 之前 ----
     # 为什么加在这个位置（三个候选位逐一推演）：
@@ -1303,7 +1342,8 @@ def cmd_search(args):
     try:
         res, note = search_unified(conn, args.query, topk=args.topk, mode=args.mode,
                                    rerank=not args.no_rerank,
-                                   since=args.since, path_prefix=args.path_prefix)
+                                   since=args.since, path_prefix=args.path_prefix,
+                                   rewrite=getattr(args, "rewrite", None))
     except ValueError as e:  # --since 格式错（argparse type 之外的双保险）
         conn.close()
         print("参数错误：%s" % e)
@@ -1342,7 +1382,8 @@ def cmd_search(args):
 def cmd_ask(args):
     conn = kb_index.connect()
     res, note = search_unified(conn, args.query, topk=args.topk, mode=args.mode,
-                               rerank=not args.no_rerank)
+                               rerank=not args.no_rerank,
+                               rewrite=getattr(args, "rewrite", None))
     ctx, cites = build_context(args.query, res)
     conn.close()
     if args.json:
@@ -1377,6 +1418,10 @@ def main():
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
+    # #39 改写档位（默认 None = 读 KB_REWRITE，再回落 l0；off 与改造前逐位一致）
+    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
+                   help="查询改写档位：off=不改写（=改造前行为）/ l0=确定性拆分（默认）/ "
+                        "l1=+去口语 / l2=+HyDE（需 KB_HYDE=1 且有 KB_HYDE_CMD）")
     # T3 元数据过滤：--since 用 type 在解析期校验日期格式（用法错误立刻可见）；
     # 过滤在 search_unified 内融合后、rerank 前执行（见该函数注释）
     p.add_argument("--since", type=_since_arg, default=None, metavar="YYYY-MM-DD",
@@ -1391,6 +1436,8 @@ def main():
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
+    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
+                   help="查询改写档位（同 search；默认读 KB_REWRITE，再回落 l0）")
     p.set_defaults(func=cmd_ask)
     p = sub.add_parser("stats")
     p.set_defaults(func=cmd_stats)

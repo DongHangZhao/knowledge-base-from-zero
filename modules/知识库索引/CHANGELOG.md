@@ -4,6 +4,49 @@
 
 ## [Unreleased] - WIP
 
+### 查询改写三层 · #39 L0 默认开 / L2 默认关（T03，2026-11-03）
+
+#### 1. 为什么改
+
+三链路召回的上限是「查询本身长什么样」。用户问「知识库 和 wiki 有啥区别」，字面路只能命中含全句的块；拆成「知识库」「wiki 有啥区别」两路召回再融合，池子完全不同。而 HyDE（用假设答案去检索）只在**有 LLM 出口**时才有意义 —— 所以它必须默认关、必须能超时回落。
+
+#### 2. 改法
+
+- **`query_rewrite.py`（新建，零依赖）**：
+  - `Plan{original, subqueries[(text,w)], hyde, level, notes}`；`LEVELS={"off":0,"l0":1,"l1":2,"l2":3}`。
+  - `split_subqueries(q)`：分隔符 `| / " vs " / 以及 / 、 / / / 和`（**"和" 排最后**，误切面最小），双阈值 `总长>=8` 且 `2~3 段、每段>=2 字`。
+  - `strip_question(q)`：只剥**首尾**（客套前缀 / 前置疑问词 / 后置语气词），不动中间 —— 全文替换会把正文关键词误删。
+  - `hyde(q, cmd, timeout)`：`subprocess.run(shlex.split(cmd), input=q, timeout=...)` → stdout 去空行前 600 字；**任何异常/非零/空 → None**。
+  - `normalize(plan, fanout_w)`：首条 1.0、其余 `KB_REWRITE_FANOUT_W`（0.6）、去重、最多 3 条。
+  - `plan(q, level, alias_fn, env)`：`off`=别名扩展后的单子查询（= 改造前）；`l0`=拆分子查询；`l1`=+去口语；`l2`=+HyDE（**必须** `KB_HYDE=1` 且有 `KB_HYDE_CMD`）。
+- **`kb_rag.search_unified`**：末尾追加 `rewrite=None`（None → 读 `KB_REWRITE`，默认 l0）；三路召回包进 `for sub, w_sub in plan.subqueries`，权重 `路权重 × w_sub`；HyDE 成功后额外并一路 `vec_hyde`（`KB_W_HYDE=0.8`），失败仅记 note。
+  - 🔴 **rerank / `_enrich` / `log_query` 一律用原始 q** —— 精排不该被同义词串稀释，查询日志必须保持可分析。
+  - 🔴 **`rewrite="off"` 与改造前逐位一致**：`subs=[(q_alias,1.0)]`、`w*1.0` 在 float 上精确、循环次序仍是 kw→vec→substr。
+- **CLI**：`search` / `ask` 新增 `--rewrite {off,l0,l1,l2}`（默认 None = 读 env → l0）。
+- **`eval_rag.py`**：新增 `--rewrite`，给了就**额外评一路** `search_unified`（表里多一列 `三路融合·改写 <档位>`）；顺手把「评测集不存在」从 `FileNotFoundError` 改成「打印 `[缺]` 并跳过」（评测集在 `state/` 不入库，干净机器上必然没有）。
+- **`alias_table.json`（新建，8 条）**：`rrf / bm25 / hyde / fts5 / embedding / rerank / chunk / llm` 的通用技术同义词 —— **不含任何人名 / 公司 / 项目名**。此前该文件不存在（`_load_alias_table` 静默返回空表），D5 别名扩展实际从未生效。
+- **`_test_query_rewrite.py`（新建，31 断言）**：短查询三档不拆、`[1.0,0.6]` 权重、`和而不同` 不误切、off 档仍做别名扩展、`strip_question` 只剥首尾、HyDE 成功/超时/非零/空命令四种结局、**`KB_HYDE=0` 时外部命令调用 0 次**（计数脚本钉死）、normalize 去重上限、纯函数同输入同输出、非法档位回落。`run_tests.py` 已登记（第 12 套件）。
+
+#### 3. 实测（2026-11-03，本机）
+
+- `python _test_query_rewrite.py` → **31 PASS / 0 FAIL**，rc=0
+- `python run_tests.py --ci` → **套件 12/12 通过 · 断言 229/229 · 18.9s**，rc=0
+- **off 档回滚钉**：把 `HEAD`（改造前）整棵树 `git archive` 到临时目录，同一库、同 6 条 query（含 2 条命中别名键）各跑一遍 `search --json`：
+  `怎么搭建个人知识库 / 知识库 和 wiki 有啥区别 / 血透 / 混合检索架构 / rrf 怎么调 / chunk 大小怎么定` → **6/6 与「改造后 + `--rewrite off`」逐字节一致**（`diff` 为空，含 note 文本）
+- `--rewrite l0`：`知识库 和 wiki 有啥区别` → `note = L1 拆分：2 条子查询; 改写 L1：2 子查询; …`；`血透`（2 字）→ `改写 L1：1 子查询`（**短查询不 fanout**）
+- HyDE 回落：`KB_HYDE=1 KB_HYDE_CMD=false KB_REWRITE=l2 search ...` → **rc=0**，note 含 `HyDE 回落：外部命令失败/超时/空输出，按 L1 检索`
+- `eval_rag` 改写列：`_modes(None)` = 11 路 → `_modes("l0")` = 12 路（新增 `('unified', '三路融合·改写 l0（search_unified）')`），`render_table` 末行 `| 三路融合·改写 l0（search_unified） | 50.0% | 0.2500 | 0.3000 | 1 |`；`search_unified_mode` 实跑 off/l0 均返回真实路径
+
+#### 4. 🔴 默认值变更 + 未完成的验证（诚实标注）
+
+- **默认值变更**：`KB_REWRITE` 默认 `l0`（Q4 拍板）。**回滚只需 `KB_REWRITE=off`，零代码**。
+- **⚠️ L0 默认开，但 R@5 能否不降尚未验证**：本机**没有 `state/kb_eval_30.json / kb_eval_100.json`**（评测集在 `state/`，gitignore 不入库），且本机 `models/` 为空（无 bge / rerank / m3 模型）⇒ `eval_rag` 的 `vec / tfidf / bge` 等模式在本机直接报缺 `lsa_model` / numpy。**因此「L0 是否降指标」这一条我没有验过，也不假装验过**。
+  - 补验命令（在有完整索引 + 评测集的机器上）：
+    `python eval_rag.py --set 30 --rewrite off` 与 `--rewrite l0` 对比新增列
+  - 判据：R@5 **不得下降**（若下降 >0.5pp，按架构 §T03 风险1 把 L0 收窄为「仅 `len(q)>=8` 且含分隔符的查询生效」）。
+  - 在补齐该验证前，**默认值保持 l0 是主理人已知的风险**；不放心就 `KB_REWRITE=off`。
+- **本机 vec 路降级**：无 numpy / 无 bge 模型，检索 note 里会出现 `vec 路失败: No module named 'numpy'` —— 这是环境，不是改写引入的；所有 off/l0 对比都在**同一降级条件**下做的，故对比仍然有效。
+
 ### 产品化三件套 · D1 人设配置 + D3 双许可说明 + #42b tag→Release（T04，2026-11-03）
 
 #### 1. 为什么改
