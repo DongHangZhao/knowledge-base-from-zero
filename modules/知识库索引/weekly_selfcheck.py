@@ -40,6 +40,7 @@ KB_IDX = os.path.join(os.path.dirname(HERE), "知识库索引")
 sys.path.insert(0, KB_IDX)
 
 from kb_index import connect, DB_PATH, search_fts, search_tfidf, search_hybrid, search_fts_chunks, search_fts_fused, KB_ROOT  # noqa: E402
+import vec_tables  # noqa: E402  #37：四表一致性（与 build 补写同一口径）
 
 CHECK_DB = os.path.join(HERE, "state", "selfcheck.db")
 REPORT_DIR = os.path.join(HERE, "reports")
@@ -75,8 +76,16 @@ def check_index(conn_kb):
         if hashlib.sha1((content or "").encode("utf-8")).hexdigest() != h:
             stale += 1
     row = conn_kb.execute("SELECT value FROM index_state WHERE key='last_build'").fetchone()
+    # 🔴 #37（2026-11-03）：四表一致性。**只追加字段、不改既有键**——
+    # 历史 JSON 消费者（看板）只认识 doc_count/stale_docs/... 那几项。
+    # 周自检只记录不判 FAIL：个人档机器没有 GPU 时 m3 天然不全，那是允许状态
+    # （判红会让「周自检 FAIL」变成噪音，真故障反而被淹没）。
+    try:
+        vec = vec_tables.diff_report(conn_kb)
+    except Exception as e:
+        vec = {"ok": None, "error": "%s: %s" % (type(e).__name__, str(e)[:80])}
     return {"doc_count": doc_count, "stale_docs": stale, "missing_docs": missing,
-            "last_build": row[0] if row else "未知"}
+            "last_build": row[0] if row else "未知", "vec_tables": vec}
 
 
 # ============ [2] 数据库健康 ============
@@ -406,6 +415,17 @@ def cmd_run(args):
     idx = check_index(conn_kb)
     print("\n[1/6] 索引健康：%d 篇｜内容落后磁盘 %d 篇｜源文件丢失 %d 篇｜上次构建 %s" % (
         idx["doc_count"], idx["stale_docs"], idx["missing_docs"], idx["last_build"]))
+    vec = idx.get("vec_tables") or {}
+    if vec.get("ok"):
+        print("[1/6] 四表一致性：✅ 无缺口（chunks=%d chunk_bge=%d vec_m3=%d trigram=%d）" % (
+            vec["counts"]["chunks"], vec["counts"]["chunk_bge"],
+            vec["counts"]["vec_m3"], vec["counts"]["chunks_trigram"]))
+    elif vec.get("error"):
+        print("[1/6] 四表一致性：⚠️ 无法校验（%s）" % vec["error"])
+    else:
+        print("[1/6] 四表一致性：⚠️ 缺 bge=%d m3=%d trigram=%d"
+              "（只告警不 FAIL：个人档无 GPU 时 m3 不全属正常）" % (
+                  vec.get("lag_bge", -1), vec.get("lag_m3", -1), vec.get("lag_tri", -1)))
 
     db = check_db(conn_kb)
     print("[2/6] 数据库：%.2f MB｜page_size %d｜碎片 %.1f%%｜完整性 %s" % (
@@ -534,6 +554,16 @@ def cmd_run(args):
     rd.append("| 库大小 | %.2f MB | page_size %d |" % (db["size_mb"], db["page_size"]))
     rd.append("| 碎片率 | %.1f%% | >20%% 建议 vacuum |" % db["frag_pct"])
     rd.append("| 完整性 | %s | integrity_check |" % db["integrity"])
+    _v = idx.get("vec_tables") or {}
+    if _v.get("ok"):
+        rd.append("| 四表一致性 | ✅ 无缺口 | chunks/chunk_bge/vec_m3/chunks_trigram 同一时刻一致 |")
+    elif _v.get("error"):
+        rd.append("| 四表一致性 | ⚠️ 无法校验 | %s |" % _v["error"])
+    else:
+        rd.append("| 四表一致性 | ⚠️ 缺 bge %d / m3 %d / trigram %d | 只告警不 FAIL（个人档无 GPU 时 m3 不全属正常）；"
+                  "企业档（KB_BACKFILL_M3=1）见 `kb_rag.py doctor` |" % (
+                      _v.get("lag_bge", -1), _v.get("lag_m3", -1), _v.get("lag_tri", -1)))
+
     rd.append("")
     for name in results:
         rd.append("## 检索质量（评测集 %s 条）\n" % name)

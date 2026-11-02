@@ -32,6 +32,7 @@ sys.path.insert(0, HERE)
 
 from kb_index import connect            # noqa: E402
 import bge_encoder                      # noqa: E402
+import vec_tables                       # noqa: E402  #37：缺口口径的唯一来源
 
 M3_DIR = os.environ.get("KB_M3_MODEL_DIR") or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "models", "bge-m3")
@@ -83,14 +84,16 @@ def main() -> int:
     conn = connect()
     conn.execute("PRAGMA busy_timeout=600000")
 
-    total = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-    miss_bge = [r[0] for r in conn.execute(
-        "SELECT id FROM chunks WHERE id NOT IN (SELECT chunk_id FROM chunk_bge) "
-        "ORDER BY id")]
-    miss_m3 = [r[0] for r in conn.execute(
-        "SELECT id FROM chunks WHERE id NOT IN (SELECT chunk_id FROM vec_m3) "
-        "ORDER BY id")]
-    print("[info] chunks=%d  缺 bge=%d  缺 m3=%d" % (total, len(miss_bge), len(miss_m3)))
+    # 🔴 #37（2026-11-03）：缺口统计与终态校验全部改用 `vec_tables`——
+    # 「补写的 id 集合」与「校验的 id 集合」必须是同一个 SQL 口径，否则就是
+    # 补一套、验一套：两边一起漂也没人发现（本脚本原本自己写了一份 NOT IN）。
+    vec_tables.ensure(conn)
+    total = vec_tables.counts(conn)["chunks"]
+    miss_bge = vec_tables.missing_ids(conn, "chunk_bge")
+    miss_m3 = vec_tables.missing_ids(conn, "vec_m3")
+    n_miss_tri = len(vec_tables.missing_ids(conn, "chunks_trigram"))
+    print("[info] chunks=%d  缺 bge=%d  缺 m3=%d  缺 trigram=%d"
+          % (total, len(miss_bge), len(miss_m3), n_miss_tri))
 
     if not miss_bge and not miss_m3:
         print("[ok] 向量表已完整，无需补编码")
@@ -130,35 +133,37 @@ def main() -> int:
             print("[m3] ✗ cuda 不可用，跳过 m3 补编码（请用 E:/_venvs/gpu/Scripts/python.exe）")
             return 4
         t0 = time.time()
-        ids, texts = texts_of(miss_m3, m3_text)
-        print("[m3] 编码 %d 块（fp16 cuda，CLS+L2）…" % len(ids))
         torch_, tok, mdl = load_m3_gpu()
-        for _ in range(2):
-            encode_m3_gpu(torch_, tok, mdl, texts[:min(8, len(texts))])
-        D = encode_m3_gpu(torch_, tok, mdl, texts, batch=args.batch)
-        assert D.shape[0] == len(ids), "行数不对：%d vs %d" % (D.shape[0], len(ids))
-        conn.executemany(
-            "INSERT OR REPLACE INTO vec_m3(chunk_id, vec) VALUES(?,?)",
-            [(cid, D[i].astype("float32").tobytes()) for i, cid in enumerate(ids)])
-        n_now = conn.execute("SELECT COUNT(*) FROM vec_m3").fetchone()[0]
-        conn.execute(
-            "INSERT OR REPLACE INTO m3_model(id,dim,n,model,built_at) VALUES(1,?,?,?,?)",
-            (int(D.shape[1]), n_now, "BAAI/bge-m3 (dense 1024, CLS+L2, fp16 cuda)",
-             time.strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-        print("[m3] ✓ 补 %d 块，用时 %.1fs，现共 %d 行" % (len(ids), time.time() - t0, n_now))
+        warmed = {"done": False}
 
-    # ---------- 终态校验 ----------
+        def encode(texts):
+            """vec_tables 注入的编码器：首批发一次 warmup（CUDA 首次分配很慢）。"""
+            if not warmed["done"]:
+                encode_m3_gpu(torch_, tok, mdl, texts[:min(8, len(texts))])
+                warmed["done"] = True
+            return encode_m3_gpu(torch_, tok, mdl, texts, batch=args.batch)
+
+        # 🔴 编码口径一个字都不动：text_fn 仍是本文件的 m3_text
+        #    （heading+content，前 1000 字，v1），与 build_vec_m3.py 逐字一致。
+        st = vec_tables.backfill_m3(
+            conn, encode, limit=0, batch=args.batch, text_fn=m3_text, log=print,
+            model="BAAI/bge-m3 (dense 1024, CLS+L2, fp16 cuda)")
+        print("[m3] ✓ 补 %d 块，用时 %.1fs，缺口 %d → %d"
+              % (st["encoded"], time.time() - t0, st["lag_before"], st["lag_after"]))
+
+    # ---------- 终态校验（与补写同一口径） ----------
     print("\n[verify] 四表终态")
-    ch = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-    bg = conn.execute("SELECT COUNT(*) FROM chunk_bge").fetchone()[0]
-    m3 = conn.execute("SELECT COUNT(*) FROM vec_m3").fetchone()[0]
-    tg = conn.execute("SELECT COUNT(*) FROM chunks_trigram").fetchone()[0]
-    print("  chunks=%d chunk_bge=%d chunks_trigram=%d vec_m3=%d" % (ch, bg, tg, m3))
-    ok = (ch == bg == tg == m3)
-    print("  " + ("✓ 四表行数一致" if ok else "⚠️ 仍有差异，请复查"))
+    rep = vec_tables.diff_report(conn)
+    c = rep["counts"]
+    print("  chunks=%d chunk_bge=%d chunks_trigram=%d vec_m3=%d"
+          % (c["chunks"], c["chunk_bge"], c["chunks_trigram"], c["vec_m3"]))
+    if rep["ok"]:
+        print("  ✓ 四表一致（无缺失 id）")
+    else:
+        print("  ⚠️ 仍有差异：缺 bge=%d 缺 m3=%d 缺 trigram=%d，请复查"
+              % (rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))
     conn.close()
-    return 0 if ok else 5
+    return 0 if rep["ok"] else 5
 
 
 if __name__ == "__main__":

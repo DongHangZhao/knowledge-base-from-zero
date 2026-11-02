@@ -4,6 +4,54 @@
 
 ## [Unreleased] - WIP
 
+### 增量闭环 · #37 m3 随 build 补 + 四表一致性断言（T02，2026-11-03）
+
+#### 1. 为什么改（一个「不报错、不丢数据、只是搜不出来」的退化）
+
+`build` 原来只调 `backfill_bge`。而 `bge_encoder.ensure_tables()` 顺手把 `vec_m3` 也建了出来 —— 于是**表在、行不在**：
+
+- 检索不报错、`doctor` 覆盖率还是 100%（它只查 `chunk_bge`）、`stats` 也只印 BGE；
+- 结果：m3 语义路长期缺一块，表现为「有些内容怎么都搜不出来」，且**没有任何告警**。
+
+四张派生表（`chunk_bge` / `vec_m3` / `chunks_trigram` / 母表 `chunks`）由**不同函数**维护，谁掉了没人知道 —— 这是最难发现的一类退化，所以本期不是「加个补向量函数」，而是**把口径收成一个原语**。
+
+#### 2. 改法
+
+- **新增 `vec_tables.py`（零依赖）** —— 表级原语，补写与校验**共用同一个 SQL 口径**：
+  - `missing_ids(conn, table, limit=0)`：唯一那把尺子。`table` **白名单校验**（`TABLES` 之外一律 `ValueError`，表名要拼进 SQL，不校验就是注入面）；trigram 是 FTS5 虚表，按 `rowid` 对齐；表不存在返回 `[]` 而不是抛（空库上 doctor 也能跑）。
+  - `diff_report(conn)` → `{ok, counts, missing, lag_bge, lag_m3, lag_tri, ts}`，`lag_*` 是全量计数，`missing` 里的 id 列表截断到 200 个（`vec_consistency` 要写进 `index_state`，不能塞十万个 int）。
+  - `backfill_m3(conn, encode, limit=0, batch=32, text_fn=None, log=None)`：注入式编码器（离线可单测），**只写缺失 id**，`status ∈ encoded|noop|skipped`。
+  - `write_m3_model` / `m3_lag`（`lag_m3` 是只读别名）/ `ensure`（内部只调 `bge_encoder.ensure_tables`，torch 懒加载 ⇒ CI 安全）。
+  - 模块**顶层不 import** numpy / torch / kb_index / bge_encoder（`ensure()` 里才懒 import）。
+- **`vector_backfill.py` 的 `main()` 改为调 `vec_tables`**：缺口统计、终态校验全部换口径；m3 段注入 `text_fn=m3_text`。`m3_text` / `load_m3_gpu` / `encode_m3_gpu` **原地不动**（它们是 m3 唯一编码口径）；退出码 4（无 CUDA）/ 5（校验失败）保留。
+- **`kb_rag.py` 新增 `backfill_m3(conn, limit=0, batch=32)`**（放在 `backfill_bge` 之后）：读 `KB_BACKFILL_M3`（`auto` 默认 / `1` 企业档 / `0` 关闭）；模型目录缺 → `no-model`；`torch` 缺或 CUDA 不可用 → `no-cuda`，**打 ⚠️ 不抛**；可用时借 `vector_backfill` 的三个函数组装 `encode`。
+- **`_cmd_build_body` 的 4/4 段**从「只补 BGE」改成 **BGE → m3 → 四表断言**，末尾写 `index_state['m3_lag']` 与 `index_state['vec_consistency']`（JSON）。
+- **按档位断言**（这是对「四表断言」的刻意收敛）：只有「`limit==0` 全量 且 四表漂移 且 `KB_BACKFILL_M3=1`」才 `return 3`（**不用 SystemExit**，`finally` 仍释放构建锁）；`--limit` 分批构建与 `auto/0` 档只记录、只告警。理由：个人档机器没有 GPU，m3 不全属**允许状态**，判红会让红灯失去信息量。`KB_STRICT_VEC=0` 可把该 rc=3 降级为告警（rc=0）。
+- **`cmd_stats`** 加一行 `vec_m3 N ｜ m3 构建于 <built_at>`；**`cmd_doctor`** 的 checks 改由 `diff_report` 驱动（报「真实覆盖 = chunks - 缺 id 数」，不再是单纯行数比 —— 孤儿行会让行数看着齐），新增「m3 覆盖率」（仅企业档判 ✅/🔴，其余档 ⚠️）与 `m3_lag` 一行。
+- **`weekly_selfcheck.check_index`** 追加 `"vec_tables": diff_report(conn)`（**只追加键、不改既有键**，历史 JSON 消费者不受影响）；报告与 stdout 加「四表一致性」一行，漂移只标 ⚠️ **不 FAIL** 整个自检。
+- **新增 `_test_vec_tables.py`**（内存 sqlite，29 断言）：缺失 id 精确、`diff_report.ok False`、`lag_m3==2`、假编码器补 2 块后清零、**已有向量一个字节都没变**、**二次跑 `encoded==0` 且编码器一次都没被调用**（幂等红线）、`limit=1` 只补 1 块、白名单外 table 名 `ValueError`、默认文本口径与 `vector_backfill.m3_text` 逐字一致。
+- **顺手修一行死代码**：`backfill_bge` 开头的 `import numpy as np` 在本函数体内**从未使用**（真正需要 numpy 的是 `bge_encoder.encode()`，它自己会 import）。留着它的后果是：一台没装 numpy 的机器上，**哪怕一块都不用编码**（增量 build 常态），build 也会在补写阶段 `ModuleNotFoundError` 崩掉 —— 与「无重依赖的机器上增量 build 只跳过、不失败」的承诺直接矛盾。
+
+#### 3. 实测（2026-11-03，本机；详细命令见验收记录）
+
+- `python _test_vec_tables.py` → **29 PASS / 0 FAIL**
+- `python run_tests.py --ci` → **套件 10/10 通过 · 断言 131/131 · 15.1s**，rc=0（GPU venv 同参数亦 10/10）
+- `KB_BACKFILL_M3=auto python kb_rag.py build --limit 1` → **rc=0**，stderr `⚠️ no-cuda 跳过 m3…`（无 torch 机器）
+- `KB_BACKFILL_M3=0 … build --limit 1` → rc=0，`m3 skipped`
+- `KB_BACKFILL_M3=1 … build`（全量，四表漂移）→ **rc=3**；加 `KB_STRICT_VEC=0` → rc=0（降级告警）
+- 同参数连跑第二次 → `BGE 新编码 0 块`（幂等）
+- `index_state` 两 key 齐：`m3_lag=26`、`vec_consistency={"ok":false,"m3_status":"no-cuda","lag":{"bge":0,"m3":26,"tri":0}}`
+- `python kb_rag.py doctor` → 企业档下 `🔴 m3 覆盖率：0 / 26（0%）`、`m3_lag：26`，rc=3；auto 档只 `⚠️`、rc=0
+- `python kb_rag.py stats` → `vec_m3 0 ｜ m3 构建于 未构建`
+- `python vector_backfill.py --dry-run` → `[info] chunks=26 缺 bge=0 缺 m3=26 缺 trigram=0`，rc=0
+
+#### 4. 决策与已知边界
+
+- **「四表一致」不能全档硬断言**：改成按档位（企业档严格、其余告警）。字面要求是「四表必须一致」，此处为「不把没有 GPU 的普通用户的日常构建搞红」做了收敛。
+- **`rc=3` 是新语义**：漂移可见化。既有定时任务若只看 rc=0 会把漂移当失败 —— 这是**故意**的；不想要就 `KB_BACKFILL_M3=0` 或 `KB_STRICT_VEC=0`。
+- **锁粒度**：见 T01 节（按目录派生）。
+- **本机无法验的**：`models/` 为空（无 bge / m3 模型），所以「补 m3 后 `lag_m3==0` 且 `diff_report.ok==True`」只能在有模型 + GPU 的机器上验；本机用注入假编码器（`_test_vec_tables.py`）与「补齐 bge 的临时库」验完了全部**编排与判定**逻辑。
+
 ### 基础设施 · #42a 测试止血 + 首次 CI + D2 多租户锁修复（T01，2026-11-03）
 
 #### 1. 为什么改（三个真实故障点，不是「代码风格」）

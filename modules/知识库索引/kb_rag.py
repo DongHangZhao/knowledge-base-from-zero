@@ -36,6 +36,7 @@ import bge_encoder     # noqa: E402
 import bge_reranker    # noqa: E402
 import ingest_raw      # noqa: E402
 import build_task      # noqa: E402  T12：多会话构建队列
+import vec_tables      # noqa: E402  #37：四表一致性的唯一口径（缺失 id / 补 m3 / 断言）
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA_PREFIX = "wiki/媒体/"
@@ -741,7 +742,11 @@ def build_context(query, results):
 # ---------- build ----------
 def backfill_bge(conn, limit=0, batch=32):
     """给没有向量的 chunk 补 BGE。增量：NOT IN 差量；每批 commit，可随时中断续跑。"""
-    import numpy as np
+    # 🔴 2026-11-03（T02）删掉一行**死代码** `import numpy as np`：本函数体内
+    # 从未用到 np（真正需要 numpy 的是 bge_encoder.encode()，它自己会 import）。
+    # 保留它的后果是：一台没装 numpy 的机器上，**哪怕一块都不用编码**（增量 build
+    # 常态），build 也会在补写阶段直接 ModuleNotFoundError 崩掉 —— 这与
+    # 「无 GPU/无重依赖的机器上增量 build 只跳过、不失败」的承诺直接矛盾。
     # 本库实测：并发会话跑 kb_index.py build 时 5s 默认超时必挂（database is locked），
     # WAL 单写者模型下全量 build 的写事务窗口以分钟计，30s 起步
     conn.execute("PRAGMA busy_timeout=30000")
@@ -789,6 +794,71 @@ def backfill_bge(conn, limit=0, batch=32):
          bge_encoder.vector_fingerprint()))
     conn.commit()
     return done
+
+
+def backfill_m3(conn, limit=0, batch=32):
+    """给缺 `vec_m3` 的 chunk 补 bge-m3 向量 —— 增量、只写缺失、无 GPU 只跳过不失败。
+
+    🔴 为什么要进 build（#37，2026-11-03）：
+       build 原来只调 `backfill_bge`，而 `bge_encoder.ensure_tables()` 顺手把
+       `vec_m3` 也建了出来 —— 于是「表在、行不在」。检索不报错、doctor 覆盖率还是
+       100%（它只查 chunk_bge），只是 m3 语义路长期缺一块。这是最难发现的一类退化。
+
+    档位（`KB_BACKFILL_M3`）：
+      · `auto`（默认）：有 CUDA **且** 有模型才补；缺任一只打 ⚠️ 跳过，**不失败**。
+        无 GPU 的个人机本来就该没有 m3 —— 那是允许状态，不是故障。
+      · `1`（企业档）：要求 m3 齐。这里同样只跳过不抛；「全量构建后仍漂移」由
+        `_cmd_build_body` 按 `limit==0 且 !ok 且 本值==1` 判 `rc=3`（可见化，不 SystemExit，
+        这样 `finally` 仍能释放构建锁）。
+      · `0` / `off`：明确不补，`status=skipped`。
+
+    Returns:
+        dict：`{status: encoded|noop|skipped|no-model|no-cuda, encoded, lag_before,
+        lag_after, reason?, dim?}`。status 永远返回而**从不抛异常**（构建不许因为没 GPU 挂）。
+    """
+    mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
+    lag_before = vec_tables.m3_lag(conn)
+    if mode in ("0", "off", "false", "no"):
+        return {"status": "skipped", "encoded": 0, "lag_before": lag_before,
+                "lag_after": lag_before, "reason": "KB_BACKFILL_M3=%s" % mode}
+    if not lag_before:
+        return {"status": "noop", "encoded": 0, "lag_before": 0, "lag_after": 0}
+
+    model_dir = os.environ.get("KB_M3_MODEL_DIR") or os.path.join(HERE, "models", "bge-m3")
+    if not os.path.isdir(model_dir):
+        say("⚠️ m3 模型缺失（%s），跳过 m3 补编码（本档不判红）" % model_dir)
+        return {"status": "no-model", "encoded": 0, "lag_before": lag_before,
+                "lag_after": lag_before, "reason": "model dir not found"}
+    try:
+        import torch
+    except Exception as e:
+        say("⚠️ no-cuda 跳过 m3：torch 未安装（%s）—— 需要 GPU venv 才能补 m3" % str(e)[:60])
+        return {"status": "no-cuda", "encoded": 0, "lag_before": lag_before,
+                "lag_after": lag_before, "reason": "torch missing"}
+    if not torch.cuda.is_available():
+        say("⚠️ no-cuda 跳过 m3：CUDA 不可用（缺 %d 块，本档不判红；"
+            "要补请用 E:/_venvs/gpu/Scripts/python.exe）" % lag_before)
+        return {"status": "no-cuda", "encoded": 0, "lag_before": lag_before,
+                "lag_after": lag_before, "reason": "cuda unavailable"}
+
+    # 🔴 编码口径唯一来源：vector_backfill 的 m3_text / load_m3_gpu / encode_m3_gpu。
+    #    这里只做「组装」，一个字都不许另起一套 —— 否则同一段文字落进两个语义空间。
+    from vector_backfill import m3_text, load_m3_gpu, encode_m3_gpu
+    torch_, tok, mdl = load_m3_gpu(model_dir)
+    warmed = {"done": False}
+
+    def encode(texts):
+        if not warmed["done"]:      # CUDA 首次分配很慢，先热一次小批
+            encode_m3_gpu(torch_, tok, mdl, texts[:min(8, len(texts))])
+            warmed["done"] = True
+        return encode_m3_gpu(torch_, tok, mdl, texts, batch=batch)
+
+    st = vec_tables.backfill_m3(
+        conn, encode, limit=limit, batch=batch, text_fn=m3_text, log=say,
+        model="BAAI/bge-m3 (dense 1024, CLS+L2, fp16 cuda)")
+    say("[m3] %s：本次 %d 块，缺口 %d → %d"
+        % (st["status"], st["encoded"], st["lag_before"], st["lag_after"]))
+    return st
 
 
 def _build_session_id():
@@ -1037,17 +1107,65 @@ def _cmd_build_body(args):
             % (mt["docs_mtime_filled"], mt["chunks_null_before"], mt["chunks_null_left"]))
     except Exception as e:
         say("⚠️ 元数据回填失败（不阻断构建）：%s" % str(e)[:110])
+    m3_st = {"status": "skipped", "encoded": 0, "lag_before": 0, "lag_after": 0}
     if not args.skip_vec:
-        say("[build] 4/4 补 BGE 语义向量…")
+        say("[build] 4/4 补向量：BGE → m3 → 四表断言…")
         n = backfill_bge(conn, limit=args.limit)
         say("[build]   BGE 新编码 %d 块" % n)
+        # 🔴 #37：m3 与 bge 同批补。无 GPU 时 status=no-cuda 只打 ⚠️、**不失败**
+        #    （个人档的 m3 缺失是允许状态，不该把日常构建搞红）。
+        m3_st = backfill_m3(conn, limit=args.limit)
+        say("[build]   m3 %s（缺口 %d → %d）"
+            % (m3_st["status"], m3_st["lag_before"], m3_st["lag_after"]))
     else:
         say("[build] 4/4 --skip-vec，跳过向量")
+    # 🔴 四表断言（与补写同一口径）：缺 id 集合为空才算一致
+    rep = vec_tables.diff_report(conn)
+    say("[build]   四表：chunks=%d bge=%d trigram=%d m3=%d ｜ 缺 bge=%d m3=%d tri=%d"
+        % (rep["counts"]["chunks"], rep["counts"]["chunk_bge"],
+           rep["counts"]["chunks_trigram"], rep["counts"]["vec_m3"],
+           rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))
+    consistency = {
+        "ts": rep["ts"],
+        "ok": rep["ok"],
+        "counts": rep["counts"],
+        "missing": rep["missing"],
+        "lag": {"bge": rep["lag_bge"], "m3": rep["lag_m3"], "tri": rep["lag_tri"]},
+        "m3_status": m3_st["status"],
+    }
+    conn.execute("INSERT OR REPLACE INTO index_state(key,value) VALUES('m3_lag',?)",
+                 (str(rep["lag_m3"]),))
+    conn.execute("INSERT OR REPLACE INTO index_state(key,value) VALUES('vec_consistency',?)",
+                 (json.dumps(consistency, ensure_ascii=False),))
     conn.execute("INSERT OR REPLACE INTO index_state(key,value) VALUES('rag_last_build',?)",
                  (datetime.datetime.now().isoformat(timespec="seconds"),))
     conn.commit()
+
+    # ---- 漂移判红（按档位断言，见 backfill_m3 注释）----
+    # 只有「全量构建（limit==0）+ 四表仍漂 + 本档要求 m3 齐（KB_BACKFILL_M3=1）」
+    # 才返回 3；--limit 分批构建与 auto/0 档只记录 m3_lag/vec_consistency，不判红 ——
+    # 否则个人档（无 GPU，m3 天然不全）每次 build 都会红，红灯就失去意义。
+    m3_mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
+    strict_vec = (os.environ.get("KB_STRICT_VEC") or "1").strip().lower() \
+        not in ("0", "false", "no", "off")
+    if rep["ok"]:
+        say("[build] 四表一致 ✓")
+    elif not args.limit and m3_mode == "1":
+        say("🔴 四表漂移：缺 bge=%d 缺 m3=%d 缺 trigram=%d"
+            % (rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))
+        if strict_vec:
+            say("   → 返回 rc=3（KB_BACKFILL_M3=1 要求 m3 齐；"
+                "KB_STRICT_VEC=0 可把这个 rc 降级为告警）")
+            conn.close()
+            return 3
+        say("   ⚠️ KB_STRICT_VEC=0：降级为告警，本次仍视为成功（rc=0）")
+    else:
+        say("⚠️ 四表仍有缺口（缺 bge=%d 缺 m3=%d 缺 tri=%d）：本次 %s，本档不判红"
+            % (rep["lag_bge"], rep["lag_m3"], rep["lag_tri"],
+               "分批构建（--limit）" if args.limit else "KB_BACKFILL_M3=%s" % m3_mode))
     say("[build] 完成。%s" % PRIVACY_NOTE)
     conn.close()
+    return 0
 
 
 # ---------- 报表 ----------
@@ -1070,6 +1188,14 @@ def cmd_stats(args):
         g("SELECT COUNT(*) FROM chunk_bge")))
     row = conn.execute("SELECT built_at FROM bge_model WHERE id=1").fetchone()
     print("BGE 构建于：%s" % (row[0] if row else "未构建"))
+    # 🔴 #37：m3 覆盖率必须和 BGE 并排可见。以前只看 BGE，导致「m3 建表但从不填」
+    #    这种漂移在 stats 上完全看不出来。
+    try:
+        n_m3 = g("SELECT COUNT(*) FROM vec_m3")
+        m3row = conn.execute("SELECT built_at FROM m3_model WHERE id=1").fetchone()
+        print("vec_m3 %d ｜ m3 构建于 %s" % (n_m3, m3row[0] if m3row else "未构建"))
+    except sqlite3.OperationalError:
+        print("vec_m3 未建表（尚未跑过 build）")
     conn.close()
 
 
@@ -1081,23 +1207,53 @@ def cmd_doctor(args):
             return conn.execute(sql).fetchone()[0]
         except sqlite3.OperationalError:
             return 0  # 表不存在 = 覆盖率为 0，doctor 会判 🔴
-    chunks = g("SELECT COUNT(*) FROM chunks")
-    tri = g("SELECT COUNT(*) FROM chunks_trigram")
-    bge = g("SELECT COUNT(*) FROM chunk_bge")
-    checks = []
-    checks.append(("向量覆盖率", bge, chunks, bge >= chunks * 0.95,
-                   "kb_rag.py build 补向量（可 --limit 分批）"))
-    checks.append(("字级索引覆盖率", tri, chunks, tri >= chunks * 0.95,
-                   "kb_rag.py build 会同步 trigram"))
+    # 🔴 #37（2026-11-03）：checks 改由 `vec_tables.diff_report` 驱动 —— 与 build
+    #    补写**同一口径**（同一个 missing_ids SQL）。以前两处各写一套行数比较，
+    #    结果是「孤儿行（chunk 已删、向量还在）让行数看着齐，实际仍有 chunk 没向量」。
+    #    现在报的是「真实覆盖 = chunks - 缺 id 数」。
+    rep = vec_tables.diff_report(conn)
+    cnt = rep["counts"]
+    chunks = max(0, cnt["chunks"])
+    cover = {
+        "bge": max(0, chunks - rep["lag_bge"]),
+        "tri": max(0, chunks - rep["lag_tri"]),
+        "m3": max(0, chunks - rep["lag_m3"]),
+    }
+    m3_mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
+
+    print("== doctor ==")
+    ok = True
+
+    def line(mark, name, have, want, note=""):
+        print("%s %s：%d / %d（%.0f%%）%s"
+              % (mark, name, have, want, (have / want * 100) if want else 0, note))
+
+    good_bge = cover["bge"] >= chunks * 0.95
+    line("✅" if good_bge else "🔴", "BGE 向量覆盖率", cover["bge"], chunks,
+         "" if good_bge else " → kb_rag.py build 补向量（可 --limit 分批）")
+    ok = ok and good_bge
+
+    good_tri = cover["tri"] >= chunks * 0.95
+    line("✅" if good_tri else "🔴", "字级索引覆盖率", cover["tri"], chunks,
+         "" if good_tri else " → kb_rag.py build 会同步 trigram")
+    ok = ok and good_tri
+
+    # 🔴 按档位断言：企业档（KB_BACKFILL_M3=1）要求 m3 齐，其余档位只标 ⚠️。
+    #    理由：个人档机器本来可能没有 GPU，m3 不全属**允许状态**，判红会让
+    #    「红灯」失去信息量。
+    if m3_mode == "1":
+        good_m3 = chunks > 0 and cover["m3"] >= chunks * 0.95
+        line("✅" if good_m3 else "🔴", "m3 覆盖率", cover["m3"], chunks,
+             "" if good_m3 else " → 企业档要求 m3 齐：用 GPU venv 跑 build 或 vector_backfill.py")
+        ok = ok and good_m3
+    else:
+        line("⚠️", "m3 覆盖率（本档不要求）", cover["m3"], chunks,
+             " → KB_BACKFILL_M3=%s；设 1 才判红" % m3_mode)
+    print("m3_lag：%d（缺 m3 的 chunk 数；本档要求 m3 时 >0 即故障）" % rep["lag_m3"])
+
     row = conn.execute("SELECT value FROM index_state WHERE key='ingest_raw_gaps'").fetchone()
     gaps = json.loads(row[0]) if row else {}
     top_gap = sorted(gaps.items(), key=lambda x: -x[1]["files"])[:6]
-    print("== doctor ==")
-    ok = True
-    for name, have, want, good, fix in checks:
-        print("%s %s：%d / %d（%.0f%%）%s" % ("✅" if good else "🔴", name, have, want,
-              (have / want * 100) if want else 0, "" if good else " → " + fix))
-        ok = ok and good
     if top_gap:
         print("⚠️ 无正文可提取（已知缺口）：" +
               ", ".join("%s×%d" % (k, v["files"]) for k, v in top_gap))
