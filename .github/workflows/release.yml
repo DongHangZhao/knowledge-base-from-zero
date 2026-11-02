@@ -1,0 +1,50 @@
+name: release
+
+# tag 驱动发版：推 v* tag → 从 CHANGELOG 抽该版本段 → gh release create。
+# 🔴 核心保障是「找不到版本段就直接 fail」：宁可没有 Release，也不出一个正文空白的
+#    Release（用户点进来看到 "No release notes"，比不发版更伤）。
+# 🔴 不附 exe：二进制是手工产物（体积大、需本机签名验证），走人工上传，CI 不碰。
+# 回滚：删掉 tag 与 Release 即可，本工作流不改动任何代码。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 抽 Release 正文（CHANGELOG 无该版本段 → 失败）
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "tag=$GITHUB_REF_NAME version=$VERSION"
+          python tools/make_release_notes.py --version "$VERSION" --check
+          python tools/make_release_notes.py --version "$VERSION" --out notes.md
+          echo "--- notes.md 前 10 行 ---"
+          head -10 notes.md
+          test -s notes.md
+
+      - name: 创建 GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag

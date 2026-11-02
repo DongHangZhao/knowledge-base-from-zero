@@ -24,7 +24,9 @@ def approx(a, b, tol=1e-9):
 def check(name, got, exp, tol=1e-9):
     global PASS, FAIL
     ok = approx(got, exp, tol)
-    print(("✓" if ok else "✗") + " %-40s got=%.6f exp=%.6f" % (name, got, exp))
+    # 🔴 统一成 [PASS]/[FAIL]（2026-11-03，T04）：原来打 ✓/✗，run_tests.py:70 的正则
+    # 数不到，看板「断言」栏只能标「按退出码」。格式改了、断言与退出码不变。
+    print("[%s] %-30s got=%.6f exp=%.6f" % ("PASS" if ok else "FAIL", name, got, exp))
     if ok:
         PASS += 1
     else:

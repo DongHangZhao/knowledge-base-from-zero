@@ -158,4 +158,6 @@ Claude Code 配置示例（`项目根/.mcp.json` 或 `~/.claude.json` 的 mcpSer
 
 ## 协议
 
-KBL-1.0（知识库从零到一开源许可 v1.0）：不可商用、强制署名、相同方式共享。版权人署名 **FallenPetal**。详见仓库根 `LICENSE` / `LICENSE.zh-CN.md`。
+KBL-1.0（知识库从零到一开源许可 v1.0）：**源码可见（source-available）· 非 OSI 开源**、不可商用、强制署名、相同方式共享。版权人署名 **FallenPetal**。详见仓库根 `LICENSE` / `LICENSE.zh-CN.md`。
+
+商用 / 企业生产部署须按 `LICENSE` §5 取得**单独书面**商业许可，流程（组织 / 用途 / 部署规模 / 是否修改 四要素）见仓库根 [`COMMERCIAL.md`](../../COMMERCIAL.md)。

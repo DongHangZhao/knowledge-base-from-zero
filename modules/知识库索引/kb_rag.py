@@ -1145,11 +1145,17 @@ def _cmd_build_body(args):
     # 只有「全量构建（limit==0）+ 四表仍漂 + 本档要求 m3 齐（KB_BACKFILL_M3=1）」
     # 才返回 3；--limit 分批构建与 auto/0 档只记录 m3_lag/vec_consistency，不判红 ——
     # 否则个人档（无 GPU，m3 天然不全）每次 build 都会红，红灯就失去意义。
+    # 🔴 `--skip-vec` 永不判红（2026-11-03，T04 修）：显式跳过了补写，四表必然漂，
+    #    这是**操作者自己的选择**，报 3 只会让「只同步文本、稍后再补向量」的正常用法
+    #    变红。跳过时只告警。
     m3_mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
     strict_vec = (os.environ.get("KB_STRICT_VEC") or "1").strip().lower() \
         not in ("0", "false", "no", "off")
     if rep["ok"]:
         say("[build] 四表一致 ✓")
+    elif getattr(args, "skip_vec", False):
+        say("⚠️ 四表有缺口（缺 bge=%d 缺 m3=%d 缺 tri=%d）——本次 --skip-vec 显式跳过补写，"
+            "按设计不判红" % (rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))
     elif not args.limit and m3_mode == "1":
         say("🔴 四表漂移：缺 bge=%d 缺 m3=%d 缺 trigram=%d"
             % (rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))

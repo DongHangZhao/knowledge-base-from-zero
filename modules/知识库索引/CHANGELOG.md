@@ -4,6 +4,49 @@
 
 ## [Unreleased] - WIP
 
+### 产品化三件套 · D1 人设配置 + D3 双许可说明 + #42b tag→Release（T04，2026-11-03）
+
+#### 1. 为什么改
+
+- **D1**：十几个 `KB_*` 环境变量没有"默认档"，新用户不知道设什么；"企业档要求 m3 齐"这类**策略差异**只写在文档里，代码完全不知情。
+- **D3**：`LICENSE` §4/§5 已经写清"商用需单独书面许可"，但**没有任何入口告诉用户怎么办** —— 于是"源码可见"被当成"开源免费用"，商业谈判也没个统一话术。
+- **#42b**：发版最容易漏的不是打 tag，是 **Release 正文空着**（用户看到 "No release notes"，而 CHANGELOG 里其实写得很清楚）。
+
+#### 2. 改法
+
+- **`kb_profile.py`（新建，零依赖）**：`personal / team / enterprise` 三档矩阵（9 个 `KB_*` 键，见模块 docstring），`apply(name)` 只对每对 kv 执行 `os.environ.setdefault` → **显式 env 恒胜**，返回 `{KEY: {value, from: env|profile}}`；`active()` / `matrix()` / `validate()`；CLI `--show / --json / --apply NAME / --check`。
+  - 🔴 三条铁律：**只用 setdefault**、**禁止导入期 apply**（`import kb_profile` 不改任何 env）、**矩阵不含 `*PRIVACY*` / `*CLOUD*` / `*TERMS*` 键**（隐私与法务承诺不能变成"某档可放松"的开关）。
+- **`COMMERCIAL.md`（新建）**：照 `LICENSE` §4(a)-(h) / §5 写商用通道 —— 免费情形表、必须授权的 8 类行为、申请四要素（组织 / 用途 / 部署规模 / 是否修改）、组织内 30 日评估例外、常见问题。**联系方式只写公开仓库 issue，不写个人邮箱**；开头明确「本文件不修改许可条文，歧义以 `LICENSE` 英文全文为准」。`LICENSE` / `LICENSE.zh-CN.md` **零改动**。
+- **README（根 + 模块）**：保留"不可商用"，追加「商用/企业生产部署须按 `LICENSE` §5 取得书面许可 → 见 `COMMERCIAL.md`」；措辞统一为「**源码可见（source-available）· 非 OSI 开源**」（这是事实描述，不是新增权利授予）。
+- **`tools/make_release_notes.py`（新建，stdlib）**：`extract(changelog, version)` 定位 `## [v<ver>]` 段截到下一个 `^## `；`--check` 找不到（或段为空）→ **rc=1**；`--out`；默认版本读 `VERSION`；`v` 前缀可选。
+- **`.github/workflows/release.yml`（新建）**：`on: push tags ["v*"]`、`permissions: contents: write`；步骤 = 抽正文（`--check` 失败即 fail）→ `gh release create --notes-file notes.md --verify-tag`；**不附 exe**（二进制手工上传）。
+- **新增 `_test_kb_profile.py`（27 断言）**：三档 key 集合一致、env 恒胜（`KB_REWRITE=off` 后再 `apply("enterprise")` 仍 `off` 且 `from=="env"`）、矩阵无隐私键、`apply` 幂等（生效值不变）、**`import kb_profile` 不改 env**、非法档名回落不抛、CLI 三个子命令端到端（子进程）。`run_tests.py` 已登记（第 11 个套件）。
+
+**顺带三个止血小修（并入本任务）**
+1. `_test_rotate.py`：`os.name != "nt"` 时打印 `[PASS] skipped-on-posix: <原因>` 并 exit 0 —— 该用例判定的是 **Windows 侧 `-shm/-wal` 三件套语义**，CI 首日不该因平台差异假红（Windows 本机仍全跑 6 条）。
+2. `_cmd_build_body`：判红条件加 `and not args.skip_vec` —— `build --skip-vec` 是**操作者显式选择**（先同步文本、稍后补向量），报 rc=3 只会把正常用法搞红；现只告警。回滚/回归：`--skip-vec` 且全量且四表有缺口时输出「按设计不判红」，rc=0。
+3. `_test_metrics.py` / `_test_mcp_server.py`：断言输出 `✓/✗` → **`[PASS]/[FAIL]`**（断言与退出码不变），`run_tests.py:70` 的正则终于数得到，看板「断言」栏不再只能标"按退出码"。
+
+#### 3. 实测（2026-11-03）
+
+- `python _test_kb_profile.py` → **27 PASS / 0 FAIL**，rc=0
+- `python run_tests.py --ci` → **套件 11/11 通过 · 断言 198/198 · 16.7s**，rc=0（其中 `_test_metrics` 23、`_test_mcp_server` 17、`_test_kb_profile` 27 已能被正则计数）
+- `python tools/make_release_notes.py --version 1.14.2 --check` → rc=0，`[PASS] v1.14.2 段落存在：28 行，首行「### 重复块治理（A 任务）…」`
+- `python tools/make_release_notes.py --version 9.9.9 --check` → **rc=1**，`[FAIL] CHANGELOG 里找不到 v9.9.9 的段落（或段落为空）—— 拒绝发一个空版`
+- `git diff --stat LICENSE LICENSE.zh-CN.md` → **空**（法条零改动）
+- `python tools/privacy_scan.py --root . --no-assets` → rc=0，`COMMERCIAL.md` 无命中
+- `python kb_profile.py --show` → 打印 3×9 矩阵；`--apply enterprise --json` → `KB_BACKFILL_M3 {"value":"1","from":"profile"}`；`KB_REWRITE=off` 时 `from` 变 `"env"`
+- `python kb_rag.py build --skip-vec`（`KB_BACKFILL_M3=1` 全量）→ rc=0，`⚠️ …本次 --skip-vec 显式跳过补写，按设计不判红`
+- 模拟 POSIX（`os.name="posix"` 后 runpy）→ `[PASS] skipped-on-posix: …`，rc=0
+- `_test_rotate.py`（Windows 真机）→ 仍 6 PASS
+
+#### 4. 决策与已知边界
+
+- **不发版**：`VERSION` 仍 `1.14.2`、**未打 tag**、未 bump。理由：本期有默认值变更（L0 改写默认开，见 T03），按语义化应走 minor；但评测集未补齐前不设默认值，故发版推后。`release.yml` 已就位，随时可 tag。
+- **`kb_profile` 只是"默认值"**，不接管任何配置持久化（不写文件、不读 yaml）—— 一旦它变成配置中心，就要处理合并/校验/回滚，收益远不及复杂度。
+- **`--json` 不带 `--apply` 时输出矩阵本身（只读）**，不改环境：同一个命令不该因为加了 `--json` 就产生副作用。
+- **矩阵新增 key 时三档必须同时补**，否则 `validate()` 与 `_test_kb_profile.py` 会红 —— 这是刻意留的"提醒"，防止某档悄悄少一个键。
+
 ### 增量闭环 · #37 m3 随 build 补 + 四表一致性断言（T02，2026-11-03）
 
 #### 1. 为什么改（一个「不报错、不丢数据、只是搜不出来」的退化）

@@ -66,6 +66,7 @@ SUITES = [
     ("_test_mcp_server.py",     "MCP 协议层",   "JSON-RPC 握手 + tools/call 注入假 searcher（离线）"),
     ("_test_lock_perdb.py",     "按库隔离的锁", "锁路径随 KB_DB_PATH 派生（多租户回归钉）"),
     ("_test_vec_tables.py",     "四表一致性",   "缺失 id 口径 / 补写只写缺失 / 二次跑无写"),
+    ("_test_kb_profile.py",     "人设配置",     "三档矩阵 / env 优先 / 无隐私项"),
 ]
 
 # B4 编码口径一致性验收：要真编码（import torch 约 170s + 模型 19s），**默认不进**

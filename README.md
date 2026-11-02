@@ -11,6 +11,8 @@
 > 由作者长期自用的知识库体系提炼、**彻底去隐私化**后公开。
 >
 > 许可：**KBL-1.0** —— 可免费用、随便改，**不可商用**，转载须署名并标注出处。
+> 准确表述是「**源码可见（source-available）· 非 OSI 开源**」：代码你读得到、改得了，但它不是 OSI 认可的开源许可。
+> 商用 / 企业生产部署须按 `LICENSE` §5 取得书面许可 → 见 [`COMMERCIAL.md`](COMMERCIAL.md)。
 > 详见 [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE`](NOTICE) / [`docs/开源守则.md`](docs/开源守则.md)。
 
 ---
@@ -188,7 +190,11 @@ my-knowledge-base/
 
 ## 七、开源许可（先读这一节再用）
 
-本项目**不是 MIT，也不是 GPL**。它是一份「源码可见 + 禁止商用 + 强制署名」的自定义许可：
+本项目**不是 MIT，也不是 GPL**。它是一份「**源码可见（source-available）· 非 OSI 开源** + 禁止商用 + 强制署名」的自定义许可。
+"源码可见"是事实描述，不是权利授予 —— 你能读到、改到代码，但商用仍需授权：
+
+> **商用 / 企业生产部署**：按 [`LICENSE`](LICENSE) §5 需取得**单独书面**商业许可，
+> 申请流程与四要素（组织 / 用途 / 部署规模 / 是否修改）见 [`COMMERCIAL.md`](COMMERCIAL.md)。
 
 | 你**可以** | 你**不可以** |
 |---|---|
@@ -244,3 +250,4 @@ my-knowledge-base/
 ## License
 
 [KBL-1.0](LICENSE) —— 免费用、随便改，**不可商用**；转载须署名 `FallenPetal` 并标注出处。
+「源码可见（source-available）· 非 OSI 开源」。商用 / 企业生产部署须按 `LICENSE` §5 取得书面许可，流程见 [`COMMERCIAL.md`](COMMERCIAL.md)。

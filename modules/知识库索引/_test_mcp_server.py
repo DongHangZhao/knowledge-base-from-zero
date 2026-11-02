@@ -46,7 +46,9 @@ class FakeCtx:
 
 def check(name, cond):
     global PASS, FAIL
-    print(("✓" if cond else "✗") + " " + name)
+    # 🔴 统一成 [PASS]/[FAIL]（2026-11-03，T04）：原来打 ✓/✗，run_tests.py:70 的正则
+    # 数不到，看板「断言」栏只能标「按退出码」。格式改了、断言与退出码不变。
+    print("[%s] %s" % ("PASS" if cond else "FAIL", name))
     if cond:
         PASS += 1
     else:
