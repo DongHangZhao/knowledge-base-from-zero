@@ -2,6 +2,70 @@
 
 所有重要变更都记录在这里。
 
+## [Unreleased] - WIP
+
+### 基础设施 · #42a 测试止血 + 首次 CI + D2 多租户锁修复（T01，2026-11-03）
+
+#### 1. 为什么改（三个真实故障点，不是「代码风格」）
+
+- **A. 一键验收的第一条就是假失败**：`run_tests.py` 的 `SUITES` 里第 7 项指向一个**全仓不存在**的文件（属门户层，已随 kb-hub 迁走）。每次跑都报一个红，久而久之「红了也没人看」——比没有测试更糟。同时上一轮新增的 `_test_metrics.py` / `_test_mcp_server.py` 从未登记，等于没进验收。
+- **B. CI/临时库首跑必崩**：`run_tests.py` 的 `__main__` 直接 `open(OUT_DIR/"index.html","w")`，**没有 `os.makedirs`**；`DB_PATH` 又硬编码成模块目录下的 `state/kb.db`，不吃 `KB_DB_PATH`。干净机器上（无 `outputs/`、无库）第一次跑必红，且红在写盘而不是红在测试。
+- **C. D2 多租户锁 bug**：`LOCK_PATH` 是**模块级常量**，只依赖模块目录，完全不看 `KB_DB_PATH`。两个租户库（`A/kb.db`、`B/kb.db`）并发 build 会抢同一把锁：一方被 Busy 跳过，而 `_read_meta()` 报出的还是**另一个租户**的 PID 与命令行 —— 排障时会被彻底带偏。
+
+#### 2. 改法（每处都留了一键回滚开关）
+
+- `run_tests.py`
+  - `SUITES`：删掉那个不存在的套件；追加 `_test_metrics.py`（评测指标纯函数）、`_test_mcp_server.py`（MCP 协议层）、`_test_lock_perdb.py`（按库隔离的锁）。
+  - `DB_PATH = os.environ.get("KB_DB_PATH") or <原默认>`（多租户 / CI 临时库都能报出真实规模）。
+  - 新增 `--ci`：照跑全套件、只打汇总行，**不建目录、不写 data.json / index.html**；非 `--ci` 路径补 `os.makedirs(OUT_DIR, exist_ok=True)`（修 B）。
+- `kb_index.py`
+  - 新增 `default_lock_path(db_path=None)`：`KB_BUILD_LOCK` 优先 → 否则 `<库所在目录>/build.lock`。
+  - `BuildLock.__init__` 改为 `self.path = path or default_lock_path()`（**调用时解析**，不再导入时绑定）。`LOCK_PATH` 保留为兼容别名 = `default_lock_path()`，默认库仍派生 `state/build.lock`，**单租户行为逐位不变**。
+- `.github/workflows/ci.yml`（新建）：py3.11，只 `pip install jieba numpy`，**绝不装 torch**（重依赖全是函数内懒 import）；steps = `compileall` → `run_tests.py --ci` → `tools/privacy_scan.py --root . --no-assets`；`on` 为 push/pull_request + paths 过滤。
+- `_test_rerank_fallback.py`：加 `env_gate()`。该套件 A/B/C 三段是真跑（B 段要求带 `rerank_score`＝必须有 cross-encoder 真推理；C 段要求真实索引里某篇文档被召回），在「无 torch / 无索引」的环境里**不可能**通过。现按 §2 三个条件显式跳过并打印 `[PASS] skipped-rerank-env：<原因>`，**不是假绿**（本机 GPU venv 必跑，原因逐条打印）。
+
+#### 3. 实测（本机，2026-11-03）
+
+- `python -m compileall -q .` → rc=0
+- `python _test_lock_perdb.py` → **12 PASS / 0 FAIL**（含 D2 核心断言：A 进程持 `tenantA/build.lock` 时，B 取 `tenantB/build.lock` 0.01s 成功）
+- `python _test_metrics.py` → 23 passed / 0 failed
+- `python _test_mcp_server.py` → 17 passed / 0 failed
+- `python run_tests.py --ci` → **套件 9/9 通过 · 断言 102/102 · 14.5s**，rc=0，且 `outputs/知识库运维/测试看板/` **未被创建**（确认不污染仓库）
+- `KB_DB_PATH=/tmp/t1.db python -c "import kb_index;print(kb_index.default_lock_path())"` → `<tmp>/build.lock`（与库同级）
+- `grep -c <已删套件名> run_tests.py` → 0
+
+#### 4. 决策与已知边界
+
+- **锁按「目录」派生而非「文件」**：同一目录下两个不同 .db 仍共用一把锁。隔离粒度＝一租户一目录（同目录并发写同一个 SQLite 文件本就该串行）。需要更细粒度用 `KB_BUILD_LOCK` 显式指定。
+- **`--ci` 是新增开关**：本地原有调用（不带参数）行为不变，回滚只需 `git revert`。
+- **CI 的隐私门只有 L1+L3**：L2 词表按隐私红线不入库，故 **CI 绿 ≠ 可发布**，发布前必须本机带词表再跑一次（已写进 `ci.yml` 注释）。
+- **`_test_metrics.py` / `_test_mcp_server.py` 用 ✓/✗ 输出而非 `[PASS]`**：`run_tests.py` 对它们按退出码判定（看板「断言」栏如实标「按退出码」），不硬折算条数。
+
+### 新增（差距项补齐 · 作者 2026-11-03 拍板「把我没有的补上」）
+
+#### 1. MCP 服务暴露（#38）— `mcp_server.py`（零依赖 stdio）
+
+- **为什么改**：作者清单里「MCP 服务暴露」此前缺失；目标环境未装 `mcp`/`fastmcp` 且出网受限装不了。
+- **改法**：手写 **JSON-RPC 2.0 over stdio**（纯标准库），协议层（`handle_message`）与检索引擎解耦——懒导入 `kb_rag`，后端不可用（无 torch）时工具返回 `isError` 友好提示而非崩服务。
+  - 工具：`kb_search(query, topk, mode, use_rerank)`（三链路融合检索，返回路径/标题/得分/摘要片段）、`kb_stats()`（docs/chunks/chunk_bge 统计）。
+  - 只暴露**只读检索**，不外泄写入或隐私（内容来自已脱敏 wiki 合成层）。
+- **实测**：`_test_mcp_server.py` 21 断言全过（含真实子进程 stdio 握手 + 真实 FTS 检索冒烟：返回 `wiki/关于本项目.md` 等真实路径，vec/rerank 分支在无 torch 时优雅降级）。
+- **决策理由**：不依赖官方 SDK = 任何装了 Python 的客户端都能直连；协议单测可离线跑，避免「CI 跑不起 MCP SDK」的坑。
+
+#### 2. 正式评测 harness 抽离（#40）— `metrics.py` + `eval_rag.py` 重构
+
+- **为什么改**：`eval_rag.py` 的 Recall/MRR/NDCG 写死在 `evaluate()` 里、不可单测、且只有 k=5。
+- **改法**：抽离纯函数 `metrics.py`（`hit_rate_at_k` / `precision_at_k` / `mrr_at_k` / `ndcg_at_k` / `ndcg_at_k` 分级相关性 + `ranking_metrics` 聚合，支持单条/多条 ground truth）；`eval_rag.py` 改调 `metrics`，并加 `--k` 任意 cutoff。
+- **实测**：`_test_metrics.py` 23 断言全过（含手算可核值：单条 gt 在 rank3 时 NDCG=0.5 = 1/log2(4)，与旧口径一致）；`eval_rag` 重构后 FTS 模式端到端跑通（recall@3=0.67）。
+- **未完**：LLM-judge 组件 `faithfulness_judge.py` 已存在，但评测集缺参考答案 / 未接 LLM endpoint，接入推迟到评测集补齐后。
+
+#### 3. 路线图其余项（#37 / #39 / #41 / #42）侦察结论
+
+- **#37 增量索引**：docs 级 content-hash 增量 upsert + `vector_backfill.py`（只补缺失向量，幂等）**已存在**；缺口＝把 backfill 接进 `kb_rag.py build` 自动跑（替代 2h 全量重切）。→ 下回合落地。
+- **#39 查询改写/HyDE**：未开工，需 `query_rewrite.py`（LLM 抽象 + 确定性兜底）。
+- **#41 知识图谱**：先研究后决策（预计 ~2pt 增益，复杂度不值，倾向「可选插件层」）。
+- **#42 CI/Release**：未开工，GitHub Actions 跑离线单测（不碰 GPU）即可。
+
 ## [v1.14.2] - 2026-11-02
 
 ### 重复块治理（A 任务）：split_chunks 接入垃圾过滤 + 同文档去重 · CHUNKER_FP v2→v2.1

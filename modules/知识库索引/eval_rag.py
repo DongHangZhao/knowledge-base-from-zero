@@ -15,7 +15,6 @@ eval_rag — 知识库 RAG 三方式对比评测
 
 import argparse
 import json
-import math
 import os
 import sqlite3
 import sys
@@ -23,6 +22,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kb_index import DB_PATH, search_fts, search_tfidf, search_hybrid, search_fts_chunks, search_fts_fused
+import metrics as _metrics  # 检索评测纯函数（hit-rate@k / MRR@k / NDCG@k / precision@k）
 
 try:
     import vector_index as _vi
@@ -114,19 +114,16 @@ def evaluate(conn, items, topk=TOPK):
                   "fused_tri": search_fused_tri,
                   "hybrid_w2": lambda c, q, k: search_hybrid(c, q, k, w_fts=2.0, w_tfidf=1.0)}[mode]
             hits = fn(conn, q, topk)
-            rank = 0
-            for i, h in enumerate(hits, 1):
-                if h["path"] == gt:
-                    rank = i
-                    break
-            if rank:
+            # 用 metrics 统一口径（与 metrics.py 单测一致；单条 gt 时 NDCG=1/log2(rank+1)）
+            ranked = [h["path"] for h in hits]
+            mm = _metrics.ranking_metrics(ranked, gt, ks=(1, topk))
+            if mm[topk]["hit"]:
                 result[mode]["hit"] += 1
-                result[mode]["rr_sum"] += 1.0 / rank
-                # NDCG@10（二值相关）：DCG = 1/log2(rank+1)，IDCG = 1（仅一个 GT 且理想排第 1）
-                result[mode]["ndcg_sum"] += 1.0 / math.log2(rank + 1)
-                if rank == 1:
-                    result[mode]["hit1"] += 1
-            else:
+            if mm[1]["hit"]:
+                result[mode]["hit1"] += 1
+            result[mode]["rr_sum"] += mm[topk]["mrr"]
+            result[mode]["ndcg_sum"] += mm[topk]["ndcg"]
+            if not mm[topk]["hit"]:
                 result[mode]["misses"].append({"query": q, "gt": gt,
                                                "top1": hits[0]["path"] if hits else None})
     n = len(items)
@@ -157,9 +154,12 @@ def render_table(res, n):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--set", choices=["30", "100", "both", "auto", "all"], default="both")
+    ap.add_argument("--k", type=int, default=None, help="Recall/MRR/NDCG 的 cutoff k（默认 5）")
     ap.add_argument("--json", help="结果另存 JSON（供 ablation.py 做对照）")
     ap.add_argument("--quiet", action="store_true", help="少打印，供脚本调用")
     args = ap.parse_args()
+    global TOPK
+    TOPK = args.k if args.k else TOPK
     if not os.path.exists(DB_PATH):
         print("索引不存在，先跑 build")
         sys.exit(1)

@@ -51,7 +51,9 @@ modules/知识库索引/
 ├── build_vec_m3.py    构建 BGE-M3 多语向量
 ├── ingest_raw.py      原始文档（docx/pdf/xlsx/html）元数据入库
 ├── _garbage_filter.py 分块垃圾过滤 + 同文档去重
-├── eval_rag.py        检索评测（hit-rate@k / MRR / Recall@k）
+├── eval_rag.py        检索评测（调用 metrics，支持 --k 任意 cutoff）
+├── metrics.py         检索评测纯函数（hit-rate@k / MRR@k / NDCG@k / precision@k，可单测）
+├── mcp_server.py      零依赖 stdio MCP 服务（暴露 kb_search / kb_stats 工具）
 ├── weekly_selfcheck.py 周自检六件套
 ├── run_tests.py       回归测试
 ├── VERSION / CHANGELOG.md
@@ -111,13 +113,46 @@ python modules/知识库索引/eval_rag.py           # 题集评测 hit-rate@k /
 
 ---
 
+## MCP 服务（让智能体直接检索知识库）
+
+把检索引擎暴露成标准 MCP（Model Context Protocol）工具，Claude Code / 任意 MCP 客户端可直连检索。**零额外依赖**——手写 JSON-RPC 2.0 over stdio（不用官方 SDK，因目标环境未装 `mcp`/`fastmcp` 且出网受限）。只暴露**只读检索**，不外泄写入或隐私（返回内容来自已脱敏的 wiki 合成层）。
+
+```bash
+# 起服务（stdio，客户端自动拉起）
+python modules/知识库索引/mcp_server.py
+# 指定索引库：KB_DB_PATH=/path/to/kb.db python modules/知识库索引/mcp_server.py
+```
+
+Claude Code 配置示例（`项目根/.mcp.json` 或 `~/.claude.json` 的 mcpServers）：
+
+```json
+{
+  "mcpServers": {
+    "kb": {
+      "command": "python",
+      "args": ["modules/知识库索引/mcp_server.py"],
+      "env": { "KB_DB_PATH": "modules/知识库索引/state/kb.db" }
+    }
+  }
+}
+```
+
+工具：
+- `kb_search(query, topk=5, mode="fused", use_rerank=True)`：三链路融合检索，返回相关文档路径 / 标题 / 得分 / 摘要片段。
+- `kb_stats()`：返回 docs / chunks / chunk_bge 统计。
+
+> 语义路（vec）与精排（rerank）需 torch + bge 模型（GPU venv）；缺失时自动降级为关键词 / 字级融合，检索照常可用。
+> 协议层有单测覆盖：`python modules/知识库索引/_test_mcp_server.py --stdio`
+
+---
+
 ## 路线图（进行中）
 
-- [ ] **增量索引**：content-hash 只重切+重编变更文档，替代 2h 全量重切
-- [ ] **MCP 服务**：暴露 stdio MCP server，让 Claude Code / 智能体直接检索
+- [ ] **增量索引**：把 `vector_backfill.py`（只补缺失向量，已存在且幂等）接进 `kb_rag.py build` 自动跑，替代 2h 全量重切
+- [x] **MCP 服务**：零依赖 stdio MCP server（mcp_server.py）已上线，暴露 kb_search / kb_stats
 - [ ] **查询改写 / HyDE**：轻量查询改写 + 可选假设文档嵌入
-- [ ] **正式评测 harness**：对齐 RAGAS 的 LLM-judge + 标准 IR 指标
-- [ ] **CI / Release**：GitHub Actions 跑回归 + 周自检，自动发版
+- [x] **正式评测 harness**：抽离可单测的 metrics.py（hit-rate@k / MRR@k / NDCG@k）；LLM-judge（faithfulness_judge.py 已存在）待接入评测集
+- [ ] **CI / Release**：GitHub Actions 跑离线单测 + 周自检，自动发版
 
 ---
 

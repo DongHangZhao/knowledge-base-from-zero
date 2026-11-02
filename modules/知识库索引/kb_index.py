@@ -174,7 +174,40 @@ CHUNKER_FP = "v2.1|max=480|snap=0.85|ovl=0|gf=1"   # 🔴 分块器指纹：写�
 # 为什么用 OS 文件锁而不是「锁文件 + PID 探测」：进程被强杀时 OS 会自动释放
 # 文件锁，不会留下永久残留。PID 方案在这种场景会失效——10-22 我就是用
 # 「杀所有 python.exe」的焦土命令把自己的 build 一起杀了，PID 文件会烂在那。
-LOCK_PATH = os.environ.get("KB_BUILD_LOCK") or os.path.join(_HERE, "state", "build.lock")
+
+
+def default_lock_path(db_path=None):
+    """推导 build 锁文件路径（D2：锁必须**随库**派生，不能全进程共用一把）。
+
+    优先级：
+      ① 环境变量 `KB_BUILD_LOCK`（显式指定，压过一切；也是本修复的一键回滚开关）
+      ② `<db_path 所在目录>/build.lock`（默认库 → `state/build.lock`，与旧行为逐位一致）
+
+    🔴 为什么必须 per-DB（2026-11-03 修，多租户 bug）：
+      旧实现把锁路径写成**模块级常量**，只依赖 `_HERE`，完全不看 `KB_DB_PATH`。
+      于是两个租户（`tenantA/kb.db` 与 `tenantB/kb.db`）并发 build 会抢同一把锁：
+      一方被 Busy 直接跳过（看似"保护"实为串行化错杀），更糟的是 `_read_meta()`
+      会报出**另一个租户**的 PID 与命令行 —— 排查时严重误导（以为是自己的进程卡住）。
+
+    🔴 为什么「调用时解析」而不是导入时绑定：`DB_PATH` 是导入时从 `KB_DB_PATH`
+      快照下来的，同一进程内切库（消融实验、单测直连临时库）时，导入时绑定的
+      路径永远是旧值。函数化后每把锁都按当下的库现算。
+
+    注意：本实现按**目录**派生，因此同一个目录下的两个不同 .db 仍共用一把锁。
+    隔离粒度是「一个库目录 = 一个租户」，多租户请一租户一目录（或显式设
+    `KB_BUILD_LOCK`）；这是刻意的取舍 —— 同目录并发写同一个 SQLite 文件本就该串行。
+    """
+    env = os.environ.get("KB_BUILD_LOCK")
+    if env:
+        return env
+    base = db_path or DB_PATH
+    return os.path.join(os.path.dirname(os.path.abspath(base)), "build.lock")
+
+
+# 兼容别名：历史上外部代码/文档直接引用 `kb_index.LOCK_PATH`（导入时快照值）。
+# 新代码请用 `default_lock_path()` —— 它随 KB_DB_PATH / KB_BUILD_LOCK 在调用时解析。
+LOCK_PATH = default_lock_path()
+
 
 if os.name == "nt":
     import msvcrt
@@ -215,7 +248,9 @@ class BuildLock:
             self.info = info
 
     def __init__(self, path=None):
-        self.path = path or LOCK_PATH
+        # 🔴 调用时解析（不能写 `path or LOCK_PATH`）：LOCK_PATH 是导入时快照，
+        # 同一进程内换库（KB_DB_PATH 变化 / 单测直连临时库）会拿到别人的锁文件。
+        self.path = path or default_lock_path()
         self.fh = None
 
     def _read_meta(self):

@@ -46,7 +46,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 KB_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 OUT_DIR = os.path.join(KB_ROOT, "outputs", "知识库运维", "测试看板")
 RUNS_DIR = os.path.join(KB_ROOT, "outputs", "知识库运维", "judged_eval_runs")
-DB_PATH = os.path.join(HERE, "state", "kb.db")
+# 🔴 必须吃 KB_DB_PATH（2026-11-03，T01）：多租户/CI 用临时库时，看板不能
+# 只报「默认库」的规模 —— 否则 CI 里永远读不到刚建的临时索引，指标空一片。
+DB_PATH = os.environ.get("KB_DB_PATH") or os.path.join(HERE, "state", "kb.db")
 
 # 测试清单：文件名 → 人读标题 + 它守的是什么（看板上要能一眼看懂「这条测试保什么」）
 SUITES = [
@@ -56,7 +58,13 @@ SUITES = [
     ("_test_privacy_gate.py",   "隐私门禁",     "隐私路径被拒 + 扫描器真调用"),
     ("_test_rerank_fallback.py","精排降级",     "低分不清空结果，降级返回并在 note 标注"),
     ("_test_rotate.py",         "备份轮转",     "按「份」不按「文件」计数（真事故回归）"),
-    ("test_dashboard_equiv.py", "看板等价性",   "遍历优化前后逐文件比对，口径不漂"),
+    # 🔴 2026-11-03（T01）删掉原第 7 项「看板等价性」套件：那个文件**全仓不存在**
+    # （它属门户层，已随 kb-hub 迁走）。留着它等于每次一键验收都报一个假失败，
+    # 久而久之「红了也没人看」—— 这比没有测试更糟。验收方式：本文件里不应再出现
+    # 该文件名（`grep -c` 必须为 0）。
+    ("_test_metrics.py",        "评测指标纯函数", "hit/precision/MRR/NDCG@k 口径 + 空集容错"),
+    ("_test_mcp_server.py",     "MCP 协议层",   "JSON-RPC 握手 + tools/call 注入假 searcher（离线）"),
+    ("_test_lock_perdb.py",     "按库隔离的锁", "锁路径随 KB_DB_PATH 派生（多租户回归钉）"),
 ]
 
 # B4 编码口径一致性验收：要真编码（import torch 约 170s + 模型 19s），**默认不进**
@@ -377,7 +385,12 @@ k 从 60 降到 2 → Recall@5 +3.0pp。依据：k=60 是 RRF 原论文为百万
     }
 
 
-def gather(skip_tests=False):
+def gather(skip_tests=False, write=True):
+    """跑全部套件并汇总。
+
+    write=False（CI 用）时**不落盘** data.json：CI 是只读验收，写仓库等于污染
+    工作区，且 outputs/ 在干净机器上根本不存在（旧实现在这里直接崩）。
+    """
     if skip_tests and os.path.exists(os.path.join(OUT_DIR, "data.json")):
         with open(os.path.join(OUT_DIR, "data.json"), "r", encoding="utf-8") as f:
             return json.load(f)
@@ -410,24 +423,35 @@ def gather(skip_tests=False):
         "index": collect_index(),
         "eval": collect_eval(),
     }
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(os.path.join(OUT_DIR, "data.json"), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    if write:
+        os.makedirs(OUT_DIR, exist_ok=True)
+        with open(os.path.join(OUT_DIR, "data.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
     return data
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-tests", action="store_true", help="只重渲染，不跑测试")
+    ap.add_argument("--ci", action="store_true",
+                    help="CI 模式：照跑全部套件，但不写 data.json / index.html")
     args = ap.parse_args()
-    d = gather(skip_tests=args.skip_tests)
-    html_path = os.path.join(OUT_DIR, "index.html")
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(render_html(d))
+    d = gather(skip_tests=args.skip_tests, write=not args.ci)
     t = d["totals"]
-    print("-" * 62)
-    print("套件 %d/%d 通过 · 断言 %d/%d · 总耗时 %ss"
-          % (t["ok"], t["suites"], t["asserts_ok"], t["asserts"], t["duration"]))
-    print("data.json  →", os.path.join(OUT_DIR, "data.json"))
-    print("看板        →", html_path)
+    if args.ci:
+        # CI 只认退出码与汇总行：不建 outputs/ 目录，不写任何文件。
+        print("-" * 62)
+        print("套件 %d/%d 通过 · 断言 %d/%d · 总耗时 %ss"
+              % (t["ok"], t["suites"], t["asserts_ok"], t["asserts"], t["duration"]))
+        print("（--ci：跳过看板写盘）")
+    else:
+        os.makedirs(OUT_DIR, exist_ok=True)
+        html_path = os.path.join(OUT_DIR, "index.html")
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(render_html(d))
+        print("-" * 62)
+        print("套件 %d/%d 通过 · 断言 %d/%d · 总耗时 %ss"
+              % (t["ok"], t["suites"], t["asserts_ok"], t["asserts"], t["duration"]))
+        print("data.json  →", os.path.join(OUT_DIR, "data.json"))
+        print("看板        →", html_path)
     sys.exit(0 if t["bad"] == 0 else 1)

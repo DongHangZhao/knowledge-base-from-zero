@@ -1,0 +1,60 @@
+name: kb-engine-ci
+
+# 只做一件事：保证「干净机器上一条命令就能验收」这条承诺是真的。
+# 🔴 绝不装 torch：本引擎所有重依赖（torch / transformers）都是**函数内懒 import**，
+#    只装 jieba + numpy 就能跑全部离线单测；装了 torch 反而把 CI 拖到 10 分钟以上，
+#    然后大家开始习惯性 --no-verify。
+# 🔴 隐私门在 CI 只有 L1+L3：L2 词表（~/.kb_privacy_terms.txt）按隐私红线**不得入库**，
+#    所以 CI 绿 ≠ 可以发布。发布前必须在本机带词表再跑一次 privacy_scan。
+
+on:
+  push:
+    paths:
+      - "modules/知识库索引/**"
+      - "tools/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "modules/知识库索引/**"
+      - "tools/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: modules/知识库索引
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            modules/知识库索引/requirements.txt
+            modules/知识库索引/requirements-extra.txt
+
+      - name: 装最小依赖（⚠️ 不装 torch）
+        run: |
+          python -m pip install --upgrade pip
+          pip install "jieba>=0.42" "numpy>=1.24"
+
+      - name: 语法体检（比 11 个套件跑完才发现 SyntaxError 快得多）
+        run: python -m compileall -q .
+
+      - name: 离线回归（全套件，--ci 不写看板/不污染仓库）
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python run_tests.py --ci
+
+      - name: 隐私终审（CI 只有 L1+L3，词表不在仓库）
+        working-directory: .
+        run: python tools/privacy_scan.py --root . --no-assets
