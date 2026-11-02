@@ -1,0 +1,10 @@
+# 知识库检索引擎 · 核心依赖
+# 安装：python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+# 建议用独立 venv；Windows 上 torch 走 pip 默认 CUDA 版本即可。
+torch>=2.0
+transformers>=4.36
+jieba>=0.42
+numpy>=1.24
+
+# 可选（非 Markdown 文档导入：docx / pdf / xlsx / html）
+# 见 requirements-extra.txt
