@@ -146,20 +146,31 @@ def diff_report(conn, max_ids=MAX_IDS_IN_REPORT):
     Returns:
         {
           "ts": ISO 时间,
-          "ok": bool,                    # 三张派生表都无缺口
+          "ok": bool,                    # 四表都在 **且** 三张派生表都无缺口
+          "tables_ok": bool,             # 四张表是否都存在
+          "absent_tables": [str],        # 不存在的表名（ok=False 的原因之一）
           "counts": {chunks, chunk_bge, vec_m3, chunks_trigram},
           "missing": {"bge": [ids], "m3": [ids], "tri": [ids]},   # 各自最多 max_ids 个
           "lag_m3": int, "lag_bge": int, "lag_tri": int,          # 全量计数
         }
+
+    🔴 表不存在 ≠ 一致（2026-11-03 修，QA 揪出的误导日志）：
+       `missing_ids` 对不存在的表返回 `[]`（空库上不能抛），于是**全新库 + `--skip-vec`**
+       时四张表一张都没建、lag 全是 0，旧代码会判 `ok=True` 并打印「四表一致 ✓」——
+       一个数据上没有、语义上更不能说的"绿灯"。现在把「表缺失」单独记成
+       `tables_ok=False` / `absent_tables`，调用方据此说「四表未齐」而不是「一致」。
     """
     cnt = counts(conn)
+    absent = [t for t in ("chunks",) + TABLES if cnt.get(t, -1) < 0]
     mb = missing_ids(conn, "chunk_bge")
     mm = missing_ids(conn, "vec_m3")
     mt = missing_ids(conn, "chunks_trigram")
     keep = max(0, int(max_ids or 0))
     return {
         "ts": datetime.datetime.now().isoformat(timespec="seconds"),
-        "ok": (not mb) and (not mm) and (not mt),
+        "ok": (not absent) and (not mb) and (not mm) and (not mt),
+        "tables_ok": not absent,
+        "absent_tables": absent,
         "counts": cnt,
         "missing": {
             "bge": mb[:keep] if keep else [],

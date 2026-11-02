@@ -420,6 +420,10 @@ def cmd_run(args):
         print("[1/6] 四表一致性：✅ 无缺口（chunks=%d chunk_bge=%d vec_m3=%d trigram=%d）" % (
             vec["counts"]["chunks"], vec["counts"]["chunk_bge"],
             vec["counts"]["vec_m3"], vec["counts"]["chunks_trigram"]))
+    elif vec.get("tables_ok") is False:
+        # 表都没建（全新库）：谈"缺口数"是误导（lag 全是 0），如实说未齐
+        print("[1/6] 四表一致性：⚠️ 四表未齐（缺 %s），跳过判定" % (
+            "、".join(vec.get("absent_tables") or [])))
     elif vec.get("error"):
         print("[1/6] 四表一致性：⚠️ 无法校验（%s）" % vec["error"])
     else:
@@ -557,6 +561,9 @@ def cmd_run(args):
     _v = idx.get("vec_tables") or {}
     if _v.get("ok"):
         rd.append("| 四表一致性 | ✅ 无缺口 | chunks/chunk_bge/vec_m3/chunks_trigram 同一时刻一致 |")
+    elif _v.get("tables_ok") is False:
+        rd.append("| 四表一致性 | ⚠️ 四表未齐 | 缺 %s（表还没建出来，不做判定） |"
+                  % "、".join(_v.get("absent_tables") or []))
     elif _v.get("error"):
         rd.append("| 四表一致性 | ⚠️ 无法校验 | %s |" % _v["error"])
     else:

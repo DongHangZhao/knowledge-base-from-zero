@@ -844,6 +844,30 @@ def backfill_bge(conn, limit=0, batch=32):
     return done
 
 
+def _m3_skip_tail(mode, limit):
+    """m3 跳过时的「后果说明」，**按档位现算**，保证日志与 build 实际返回值一致。
+
+    🔴 为什么要有这个函数（2026-11-03 修，QA 揪出的前后矛盾）：
+       原来固定写「本档不判红」，但企业档（`KB_BACKFILL_M3=1`）缺模型时
+       `_cmd_build_body` 随后真的会返回 rc=3 —— 日志说"不判红"、退出码却红，
+       是典型的"漂亮报错但自相矛盾"。现在三种结局分别说清：
+         企业档 + 全量 + 未降级 → 明确"将返回 rc=3"
+         企业档 + 全量 + KB_STRICT_VEC=0 → 明确"降级为告警，rc=0"
+         企业档 + 分批（--limit）→ 明确"本次不判红，全量构建才会红"
+         auto/其它档 → "本档不判红"
+    """
+    ent = str(mode).strip().lower() == "1"
+    strict = (os.environ.get("KB_STRICT_VEC") or "1").strip().lower() \
+        not in ("0", "false", "no", "off")
+    if not ent:
+        return "（本档 KB_BACKFILL_M3=%s 不判红）" % mode
+    if limit:
+        return "（企业档 KB_BACKFILL_M3=1 要求 m3 齐；本次是分批构建 --limit，不判红）"
+    if strict:
+        return "（企业档 KB_BACKFILL_M3=1 要求 m3 齐 → 本次全量构建将以 rc=3 判红）"
+    return "（企业档要求 m3 齐，但 KB_STRICT_VEC=0 → 本次降级为告警，rc=0）"
+
+
 def backfill_m3(conn, limit=0, batch=32):
     """给缺 `vec_m3` 的 chunk 补 bge-m3 向量 —— 增量、只写缺失、无 GPU 只跳过不失败。
 
@@ -873,19 +897,19 @@ def backfill_m3(conn, limit=0, batch=32):
         return {"status": "noop", "encoded": 0, "lag_before": 0, "lag_after": 0}
 
     model_dir = os.environ.get("KB_M3_MODEL_DIR") or os.path.join(HERE, "models", "bge-m3")
+    tail = _m3_skip_tail(mode, limit)
     if not os.path.isdir(model_dir):
-        say("⚠️ m3 模型缺失（%s），跳过 m3 补编码（本档不判红）" % model_dir)
+        say("⚠️ m3 模型缺失（%s），跳过 m3 补编码%s" % (model_dir, tail))
         return {"status": "no-model", "encoded": 0, "lag_before": lag_before,
                 "lag_after": lag_before, "reason": "model dir not found"}
     try:
         import torch
     except Exception as e:
-        say("⚠️ no-cuda 跳过 m3：torch 未安装（%s）—— 需要 GPU venv 才能补 m3" % str(e)[:60])
+        say("⚠️ no-cuda 跳过 m3：torch 未安装（%s）%s" % (str(e)[:60], tail))
         return {"status": "no-cuda", "encoded": 0, "lag_before": lag_before,
                 "lag_after": lag_before, "reason": "torch missing"}
     if not torch.cuda.is_available():
-        say("⚠️ no-cuda 跳过 m3：CUDA 不可用（缺 %d 块，本档不判红；"
-            "要补请用 E:/_venvs/gpu/Scripts/python.exe）" % lag_before)
+        say("⚠️ no-cuda 跳过 m3：CUDA 不可用（缺 %d 块）%s" % (lag_before, tail))
         return {"status": "no-cuda", "encoded": 0, "lag_before": lag_before,
                 "lag_after": lag_before, "reason": "cuda unavailable"}
 
@@ -1167,12 +1191,17 @@ def _cmd_build_body(args):
             % (m3_st["status"], m3_st["lag_before"], m3_st["lag_after"]))
     else:
         say("[build] 4/4 --skip-vec，跳过向量")
-    # 🔴 四表断言（与补写同一口径）：缺 id 集合为空才算一致
+    # 🔴 四表断言（与补写同一口径）：缺 id 集合为空**且四张表都存在**才算一致
     rep = vec_tables.diff_report(conn)
     say("[build]   四表：chunks=%d bge=%d trigram=%d m3=%d ｜ 缺 bge=%d m3=%d tri=%d"
         % (rep["counts"]["chunks"], rep["counts"]["chunk_bge"],
            rep["counts"]["chunks_trigram"], rep["counts"]["vec_m3"],
            rep["lag_bge"], rep["lag_m3"], rep["lag_tri"]))
+    if not rep.get("tables_ok", True):
+        # 表缺失 ≠ 一致：全新库 + --skip-vec 时一张都没建，lag 全 0 但根本没数据可比。
+        # 说「未齐 / 跳过判定」，不说「一致 ✓」（QA 2026-11-03 揪出的误导绿灯）。
+        say("⚠️ 四表未齐（缺表：%s），跳过一致性判定"
+            % "、".join(rep.get("absent_tables") or []))
     consistency = {
         "ts": rep["ts"],
         "ok": rep["ok"],
@@ -1199,7 +1228,10 @@ def _cmd_build_body(args):
     m3_mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
     strict_vec = (os.environ.get("KB_STRICT_VEC") or "1").strip().lower() \
         not in ("0", "false", "no", "off")
-    if rep["ok"]:
+    if not rep.get("tables_ok", True):
+        # 与上面那条「四表未齐」呼应：表都没建，谈不上漂移，也谈不上一致。
+        say("   → 本次不做一致性判定（表还没建出来，不代表索引有问题）")
+    elif rep["ok"]:
         say("[build] 四表一致 ✓")
     elif getattr(args, "skip_vec", False):
         say("⚠️ 四表有缺口（缺 bge=%d 缺 m3=%d 缺 tri=%d）——本次 --skip-vec 显式跳过补写，"

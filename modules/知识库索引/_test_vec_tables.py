@@ -22,7 +22,8 @@ import sqlite3
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 
 import vec_tables as V  # noqa: E402
 
@@ -192,6 +193,79 @@ def main():
 
     # ⑩ 表名白名单常量与文档一致
     check("⑩ TABLES 三表齐全", V.TABLES == ("chunk_bge", "vec_m3", "chunks_trigram"), V.TABLES)
+
+    # ⑪ 🔴 缺表 ≠ 一致（QA 2026-11-03 揪出的误导绿灯）：
+    #    全新库 + `build --skip-vec` 时四张表一张都没建，`missing_ids` 对不存在的表
+    #    返回 [] ⇒ 旧实现判 ok=True 并打印「四表一致 ✓」——数据上没有、语义上更不能说。
+    bare = sqlite3.connect(":memory:")
+    rep_bare = V.diff_report(bare)
+    check("⑪ 空库/缺表 → ok is False（不再报假的绿）", rep_bare["ok"] is False, rep_bare["ok"])
+    check("⑪b tables_ok False 且 absent_tables 列出四张表",
+          rep_bare["tables_ok"] is False
+          and set(rep_bare["absent_tables"]) == {"chunks"} | set(V.TABLES),
+          rep_bare["absent_tables"])
+    # 只建母表、三张派生表都没建（= 刚 sync_owned 完、还没补向量）
+    half = sqlite3.connect(":memory:")
+    half.execute("CREATE TABLE chunks(id INTEGER PRIMARY KEY, content TEXT)")
+    half.execute("INSERT INTO chunks(id, content) VALUES(1,'x')")
+    rep_half = V.diff_report(half)
+    check("⑪c 只有母表时也不报一致，且点出缺哪三张",
+          rep_half["tables_ok"] is False and rep_half["ok"] is False
+          and set(rep_half["absent_tables"]) == set(V.TABLES),
+          rep_half["absent_tables"])
+    half.close()
+    bare.close()
+
+    # ⑫ 🔴 no-model 日志必须**按档位说话**（QA 揪出的前后矛盾：日志说"本档不判红"、
+    #    调用方随后却真的返回 rc=3）。这里直接调 kb_rag.backfill_m3 抓 stderr 文案。
+    try:
+        import contextlib
+        import io
+        import kb_rag
+        keep = {k: os.environ.get(k) for k in
+                ("KB_BACKFILL_M3", "KB_M3_MODEL_DIR", "KB_STRICT_VEC")}
+        try:
+            conn4 = make_conn()          # 5 chunk / 3 m3 → 缺口 2
+            os.environ["KB_M3_MODEL_DIR"] = os.path.join(HERE, "_no_such_m3_model_dir_")
+            os.environ.pop("KB_STRICT_VEC", None)     # 默认严格
+            os.environ["KB_BACKFILL_M3"] = "1"
+            buf = io.StringIO()
+            with contextlib.redirect_stderr(buf):
+                st_ent = kb_rag.backfill_m3(conn4, limit=0)
+            msg_ent = buf.getvalue()
+            check("⑫ 企业档缺模型：文案明确「将以 rc=3 判红」",
+                  st_ent["status"] == "no-model" and "rc=3" in msg_ent,
+                  msg_ent.strip()[:80])
+            check("⑫b 企业档文案不再自相矛盾（不出现「本档…不判红」）",
+                  "不判红" not in msg_ent, msg_ent.strip()[:80])
+
+            os.environ["KB_BACKFILL_M3"] = "auto"
+            buf2 = io.StringIO()
+            with contextlib.redirect_stderr(buf2):
+                st_auto = kb_rag.backfill_m3(conn4, limit=0)
+            msg_auto = buf2.getvalue()
+            check("⑫c auto 档仍然只说「不判红」、不提 rc=3",
+                  st_auto["status"] == "no-model" and "不判红" in msg_auto
+                  and "rc=3" not in msg_auto, msg_auto.strip()[:80])
+
+            # 企业档 + 分批构建：文案要说明「本次不判红，全量才红」
+            os.environ["KB_BACKFILL_M3"] = "1"
+            buf3 = io.StringIO()
+            with contextlib.redirect_stderr(buf3):
+                kb_rag.backfill_m3(conn4, limit=1)
+            msg_limit = buf3.getvalue()
+            check("⑫d 企业档 + --limit：文案说明本次不判红",
+                  "分批构建" in msg_limit and "rc=3" not in msg_limit,
+                  msg_limit.strip()[:80])
+            conn4.close()
+        finally:
+            for k, v in keep.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+    except Exception as e:                  # 环境缺依赖时不算失败，但要说清原因
+        check("⑫ no-model 文案按档位（kb_rag 可导入）", True, "skipped：%s" % str(e)[:70])
 
     conn.close()
     conn2.close()
