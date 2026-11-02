@@ -543,6 +543,15 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             if note and note not in notes:
                 notes.append(note)
             add(items, "substr", _w("KB_W_SUBSTR", W_SUBSTR) * w_sub)
+        # #41 图谱实验路：默认**永不执行**（KB_KG 未设），且函数内 import ⇒ 零加载。
+        # 排除已命中文档：否则这路只是给已有结果加分，等于没做实验（见 kg_gate 注释）。
+        if os.environ.get("KB_KG") == "1":
+            try:
+                import kg_gate
+                add(kg_gate.expand_1hop(conn, sub, topk * 2, set(rrf.keys())),
+                    "kg", _w("KB_W_KG", 0.5))
+            except Exception as e:
+                notes.append("kg 路失败: %s" % str(e)[:60])
 
     # #39 L2：HyDE 假设答案单独走一路 vec（权重 KB_W_HYDE=0.8，失败仅记 note）。
     # 只并入 vec 路、不改关键词路：假设答案是"假文档"，让它参与精排/关键词匹配

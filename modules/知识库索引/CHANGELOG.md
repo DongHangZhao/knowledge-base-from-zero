@@ -4,6 +4,39 @@
 
 ## [Unreleased] - WIP
 
+### 图谱 1pt 实验脚手架 · #41（T05，2026-11-03）
+
+#### 1. 为什么只做脚手架
+
+图谱在小语料上的收益**高度依赖查询形态**（只有多跳/实体关联类查询受益），而本库主力场景是「单跳事实查找」；维护成本（实体抽取质量、侧表同步、schema 演进）却是持续支出。所以先花 1pt 买一个**可复现的结论**：通过才允许投入，不通过就整块删掉 —— 不做图谱层。
+
+#### 2. 改法
+
+- **`kg_extract.py`（新建，零依赖）**：`extract_entities(text)` 规则抽取 6 类实体（`《标题》` / `「引号」` / 反引号标识符 / `#tag` / 英文 CapWords / `alias_table.json` 键）；`ensure_sidecar(conn)` 建 `chunk_entities(chunk_id, entity, ent_type) WITHOUT ROWID` + `idx_ent(entity)`；`build_sidecar(conn, limit, dry_run)` **只处理侧表里还没有的 chunk** + `INSERT OR IGNORE`（幂等）；`rebuild()` 仅 `--rebuild` 显式调用。
+  - 🔴 **`KB_KG != 1` 时 `build_sidecar` 直接 return `{"status":"disabled"}`，连表都不建**（有测试钉死）。
+  - 实体过滤：要求含字母或汉字（挡 `400`），代码实体还必须是**标识符形状**（挡反引号里的公式碎片 `1/(k+rank)`、`2.0/1.5/0.5` —— 这类会命中每个提到数字的块，造出大量假 1-hop 边）。
+- **`kg_gate.py`（新建）**：`MIN_R5_DELTA=0.03` / `MAX_P95_DELTA_MS=150` **写死为模块常量，没有任何 env 读取**（实验最容易被"调阈值调到通过"）；`expand_1hop(conn, q, topk, exclude_docs)` 从「查询实体 → 共享实体的 chunk」取 1-hop 邻居，**必须传 `exclude_docs`** 排除已命中文档（否则这路只是给已有结果加分，等于没做实验）；`decide(baseline, treat)` → `{pass, r5_delta, p95_delta_ms, verdict, reasons}`，`pass = r5_delta >= 0.03 且 p95_delta_ms <= 150`（含等号）；`main()` 打印判定表，**FAIL → rc=6**（永不出现在 CI），`--write-decision` 生成 `docs/decisions/KG-41.md`。
+- **`kb_rag.search_unified`**：substr 路之后追加 6 行 `if os.environ.get("KB_KG") == "1": try: import kg_gate; add(...) except: note`。**默认 `KB_KG` 未设 ⇒ 这 6 行永不执行、`kg_gate` 连 import 都不发生**。
+- **`eval_sets/multihop_30.example.json`（新建）**：30 条占位（真集放 `state/kb_eval_multihop_30.json`，gitignore 不入库）；`eval_rag.py` 新增 `--set multihop` 与 **gt 列表容错**（多跳子集常有多 gt，原来 `path=?` 传 list 会崩）。
+- **`docs/decisions/KG-41.md`（新建）**：决策记录模板（判据 / 实测表格待填 / 复现命令 / **一条命令回滚**）。
+- **`_test_kg.py`（新建，30 断言）**：实体三类抽全 + 噪声过滤、1-hop 只走一跳（2 跳的 c3 不许混入）、"不含自身"（`exclude_docs` 排掉种子文档后只剩邻居）、决策门 4 个边界（0.03/150、0.029/150、0.05/151、0.05/150）、**`KB_KG` 未设时连表都不建**、侧表幂等与 dry-run。`run_tests.py` 已登记（第 13 套件）。
+
+#### 3. 实测（2026-11-03，本机）
+
+- `python _test_kg.py` → **30 PASS / 0 FAIL**，rc=0
+- `python run_tests.py --ci` → **套件 13/13 通过 · 断言 258/258 · 19.3s**，rc=0
+- `KB_KG` 未设：`build_sidecar` → `{'status': 'disabled', ...}`；`sqlite_master` 里**只有 `chunks`、没有 `chunk_entities`**
+- **零影响对照**：把 T03 的 commit（`git archive`）与当前代码对同一库、同 4 条 query 各跑一遍 `search --json` → **4/4 逐字节一致**（KB_KG 未设时检索结果与 T03 后完全相同）
+- `KB_KG=1 python kg_extract.py`（26 chunk 的临时库）→ `抽到实体=140/122 写入=139/121`（过滤公式碎片后从 143→122 实体）；`--dry-run` → `写入=0（dry-run，未写库）`
+- `python kg_gate.py --baseline base.json --treat treat.json` → PASS 场景 `R@5 +3.0pp ✅ / p95 +150ms ✅ → 判定：做插件层`，**rc=0**；FAIL 场景 `R@5 +2.0pp 🔴 / p95 +160ms 🔴 → 判定：归档不做`，**rc=6**
+
+#### 4. ⚠️ 结论未定（诚实标注）
+
+- **真实验没跑**：需要「四表一致 + `state/kb_eval_multihop_30.json` + 有 GPU 的机器」，本机 `models/` 为空、评测集不在库。所以本文件**不能**写「R@5 +X.Xpp → 判定做/不做」——那是编的。
+- 已就绪的是**判据、脚本与模板**：真跑一条命令即可得出结论（见 `docs/decisions/KG-41.md` §三 复现命令），结论出来后用 `kg_gate.py --write-decision` 覆盖生成实测版。
+- **前置断言**：实验前必须 `diff_report(conn)["ok"] == True`（四表漂移会让 treat 组延迟虚高，把结论带偏）。
+- 回滚（若结论是"不做"）：`DROP TABLE chunk_entities` + 删 `kg_extract.py`/`kg_gate.py`/`_test_kg.py`/`eval_sets/*.example.json` + 删 `kb_rag.py` 那 6 行，业务路径零命中。
+
 ### 查询改写三层 · #39 L0 默认开 / L2 默认关（T03，2026-11-03）
 
 #### 1. 为什么改

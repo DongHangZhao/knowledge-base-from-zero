@@ -174,7 +174,9 @@ def render_table(res, n, modes=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", choices=["30", "100", "both", "auto", "all"], default="both")
+    ap.add_argument("--set", choices=["30", "100", "both", "auto", "all", "multihop"],
+                    default="both",
+                    help="multihop = 多跳子集（#41 图谱实验用，真集放 state/ 不入库）")
     ap.add_argument("--k", type=int, default=None, help="Recall/MRR/NDCG 的 cutoff k（默认 5）")
     ap.add_argument("--json", help="结果另存 JSON（供 ablation.py 做对照）")
     ap.add_argument("--quiet", action="store_true", help="少打印，供脚本调用")
@@ -196,6 +198,9 @@ def main():
         sets.append(("人工标注 30 条", os.path.join(S, "kb_eval_30.json")))
     if args.set in ("100", "both", "all"):
         sets.append(("人工标注 100 条", os.path.join(S, "kb_eval_100.json")))
+    if args.set == "multihop":
+        # #41 实验集：真集放 state/（gitignore），仓库里只有 eval_sets/*.example.json 占位
+        sets.append(("多跳子集 30 条（#41 实验）", os.path.join(S, "kb_eval_multihop_30.json")))
     if args.set in ("auto", "all"):
         p = os.path.join(S, "kb_eval_auto.json")
         if os.path.exists(p):
@@ -223,9 +228,11 @@ def main():
         # 校验 gt 是否在索引中
         bad = []
         for it in items:
-            row = conn.execute("SELECT id FROM docs WHERE path=?", (it["gt"],)).fetchone()
-            if not row:
-                bad.append(it["gt"])
+            # gt 允许单路径字符串或多路径列表（多跳子集常见多 gt）；列表时逐个校验
+            gts = it["gt"] if isinstance(it.get("gt"), list) else [it.get("gt")]
+            if not any(conn.execute("SELECT id FROM docs WHERE path=?", (g,)).fetchone()
+                       for g in gts if g):
+                bad.append(it.get("gt"))
         if bad:
             print("[警告] %d 条 ground truth 不在索引中：" % len(bad))
             for b in sorted(set(bad)):
