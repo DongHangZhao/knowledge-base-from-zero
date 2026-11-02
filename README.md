@@ -34,6 +34,7 @@
 | 使用指南 | `docs/使用指南.md` | 拿到仓库后怎么真正用起来（门户 / 模板 / 工具 / 让 AI 接手） |
 | 发布与安装说明 | `RELEASE.md` | Releases 里的 zip / exe 怎么下载安装 |
 | 守则执行工具 | `tools/` | 示例清单生成器、隐私扫描器、双语校验器 |
+| 检索引擎（RAG Index Engine） | `modules/知识库索引/` | 三链路混合检索核心：FTS5 ⊕ BGE ⊕ 字级 substring + reranker，详见其 `README.md` |
 
 > 🌐 **全部文档中英双语**：每篇正文顶部有「简体中文 ｜ English」切换，两版内容一一对应。
 > 英文版命名规则：根目录与 `kb-hub/` 用 `<原名>.en.md`；`docs/` 用语义化英文名（如 `architecture.en.md`）；`templates/` 用 `<原名>.en.md`。
@@ -102,6 +103,25 @@ my-knowledge-base/
 
 完整设计、表结构、最小可运行实现（约 80 行 SQLite FTS5）见
 [`docs/双链路体系.md`](docs/双链路体系.md)。
+
+---
+
+## 二（续）· 检索引擎（RAG Index Engine）
+
+仓库自带一套**生产级检索引擎**，把 `wiki/`、`raw/`、`modules/` 下的 Markdown 切成带引用的块，编成语义向量 + 倒排索引，用 **FTS5 关键词 ⊕ BGE 语义 ⊕ 字级 substring** 三链路融合召回，再用 **bge-reranker 交叉编码器**精排。中文单语检索用 BGE-small-zh（512 维），跨语言路由可用 BGE-M3（1024 维，默认关）。
+
+- 代码位置：`modules/知识库索引/`（含 `README.md` 详细说明、依赖、配置、质量保障）
+- 核心能力：断句吸附分块 + 垃圾过滤、RRF 融合、GPU 精排（32s→0.85s）、跨语路由、增量向量补齐、原子重切换表
+- 快速开始：
+
+  ```bash
+  pip install -r modules/知识库索引/requirements.txt
+  # 放置 bge 模型到 modules/知识库索引/models/（或设 KB_BGE_MODEL_DIR / KB_M3_MODEL_DIR）
+  python modules/知识库索引/kb_rag.py build
+  python modules/知识库索引/kb_rag.py search --query "混合检索怎么做" --topk 5
+  ```
+
+> 引擎版本随检索内核演进（当前 **v1.14.2**）；门户与文档体系沿用 v1.4.0。详细变更见 `modules/知识库索引/CHANGELOG.md`。
 
 ---
 

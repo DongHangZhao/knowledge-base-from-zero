@@ -2,9 +2,11 @@
 
 **简体中文** ｜ [English](RELEASE.en.md)
 
-当前版本：**v1.4.0**（2026-10-26）
+当前版本：**v1.14.2**（检索引擎并入仓库；门户与文档体系 v1.4.0，2026-10-26）
 许可：**KBL-1.0** —— 可免费用、随便改，**不可商用**，转载须署名并标注出处。
 详见 [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE`](NOTICE)。
+
+本仓库现已并入**生产级检索引擎** [`modules/知识库索引/`](modules/知识库索引/)（v1.14.2）：三链路混合检索（FTS5 ⊕ BGE ⊕ 字级 substring）+ bge-reranker 精排 + 跨语路由，详见其 [`README.md`](modules/知识库索引/README.md) 与 [`CHANGELOG.md`](modules/知识库索引/CHANGELOG.md)。门户（kb-hub）已内置对该引擎的「全库检索」调用。
 
 本仓库在 **Releases** 里提供两种下载方式，二选一即可。
 **全部文档中英双语**：每篇正文顶部有「简体中文 ｜ English」切换，两版内容一一对应。
@@ -28,6 +30,7 @@
 | 资产 | 文件名 | 适合谁 | 说明 |
 |---|---|---|---|
 | 源码压缩包 | `kb-from-zero.zip` | 想看全部源码 / 模板的人 | 整个仓库的快照（含中英双语文档），解压即用 |
+| 检索引擎源码 | `modules/知识库索引/` | 想自建 / 改检索内核的人 | 三链路 RAG 引擎，含 README / 依赖 / 配置 / 测试 |
 | 门户可执行文件 | `kb-hub.exe` | 只想用门户、不想装 Python 的人 | 零依赖单文件，双击即开 `http://127.0.0.1:8799/` |
 
 > 两份资产都附本说明文件（`RELEASE.md` / `RELEASE.en.md`）与仓库首页 `README.md` / `README.en.md` 的链接。
