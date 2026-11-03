@@ -88,7 +88,16 @@ STOP_CN = set("""
 保留 分析 参考 内容 说明 备注 补充 更新 修复 新增 删除 修改 调整 优化
 开始 结束 完成 继续 支持 包含 对应 根据 按照 用于 用来 表示 显示 出现
 总览 评估 规范 有没有 每日 总结 汇总 清单 列表 详情 概览 指南 查询
+第一个 第二个 第三个 第四个 第五个 首先 其次 然后 最后 一次 两次
+那套 这套 那种 这种 那些 这些 哪个 哪些 什么样 如何 是否 能否
+上线 下线 之前 之后 里面 之外 除了 关于 对应 相关 有关 所谓
+专门 常规 承载 哪种 哪套 该套 这套 那套 采用 选型 选项 方向 维度
+上面 下面 前面 后面 左边 右边 内部 外部 整体 单个 多个 大量 少量
 """ .split())
+
+# 序数 / 指代词模式：这类词在任何语料里都高频共现，做实体只会污染图
+_ORDINAL = re.compile(
+    r"^第[一二三四五六七八九十百零\d]+[个套条款项次级批版]?$")
 
 STOP_EN = set("""
 in the to and of for is are was were on at by with from as an or if it
@@ -115,6 +124,9 @@ def _valid_term(t):
     if t in STOP_CN or t.lower() in STOP_EN:
         return False
     if _DIGITISH.match(t) or _DATEY.match(t):
+        return False
+    # 序数/指代（第一个 / 第三套 / 第二批）：无信息量，进图只会把扩散带偏
+    if _ORDINAL.match(t):
         return False
     # 含括号的整串不要（「隐私文件索引（自动识别）」这种是标题残渣，
     # 括号里的内容已经在 build_domain_dict 里单独提出来了）
@@ -308,9 +320,13 @@ def extract(text, dic=None, use_jieba=True):
                 continue
             if w in out:
                 continue
-            # 中文二字词：只有词典收的才要（「集群」「统一」这种通用二字词是噪声源）
-            if _CN.match(w) and len(w) == 2 and not (dic and w in dic):
-                continue
+            # 中文二字词：早期版本要求「必须在词典里」，结果把「时序」「血透」
+            # 「护士」这类真正的领域词全杀了 —— 它们不进标题，所以词典没有，
+            # 而它们恰恰是跨文档跳转的关键线索。
+            # 改为只挡「停用词表里明确列出的泛词」，其余放行到 df 过滤再裁决。
+            if _CN.match(w) and len(w) == 2:
+                if not (dic and w in dic) and w in STOP_CN:
+                    continue
             # 全小写英文且不在词典：多半是代码碎片（「the」「src」「tmp」）
             if (not _CN.search(w)) and w.islower() and not (dic and w in dic):
                 continue

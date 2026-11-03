@@ -89,7 +89,7 @@ TPL = r"""<!DOCTYPE html>
       <div><b id="k-n">0</b><span>实体节点</span></div>
       <div><b id="k-e">0</b><span>共现关系</span></div>
       <div><b id="k-d">0</b><span>文档来源</span></div>
-      <div><b id="k-m">0</b><span>实体提及</span></div>
+      <div><b id="k-m">0</b><span id="k-m-l">共现对</span></div>
     </div>
     <div class="sec">搜索实体</div>
     <input id="q" placeholder="输入关键词，如 Agent / 集群 / 检索">
@@ -131,17 +131,21 @@ nodes.forEach(n=>{ n.r = 4 + 13*Math.sqrt(n.deg/maxDeg); });
 const comps = [...new Set(nodes.map(n=>n.comp))].sort((a,b)=>a-b);
 const W = ()=>cv.clientWidth, H = ()=>cv.clientHeight;
 function seed(){
-  const cx=W()/2, cy=H()/2, R=Math.min(W(),H())*0.33;
+  // canvas 有时在首帧还没拿到布局尺寸（clientWidth=0），
+  // 那样所有节点会被塞到 (0,0)，fit() 再怎么算也是一坨。
+  const w = W() || window.innerWidth - 300;
+  const h = H() || window.innerHeight;
+  const cx=w/2, cy=h/2, R=Math.min(w,h)*0.42;
   const byComp = new Map(comps.map(c=>[c,[]]));
   nodes.forEach(n=>byComp.get(n.comp).push(n));
   comps.forEach((c,ci)=>{
     const a0 = ci/comps.length*Math.PI*2;
-    const cr = comps.length>1 ? R*0.62 : 0;
+    const cr = comps.length>1 ? R*0.78 : 0;
     const ccx = cx + Math.cos(a0)*cr, ccy = cy + Math.sin(a0)*cr;
     const arr = byComp.get(c);
     arr.forEach((n,i)=>{
       const a = i/Math.max(1,arr.length)*Math.PI*2;
-      const rr = Math.min(W(),H())*0.10 + (i%7)*4;
+      const rr = Math.min(w,h)*0.11 + (i%9)*5;
       n.x = ccx + Math.cos(a)*rr;
       n.y = ccy + Math.sin(a)*rr;
       n.vx = n.vy = 0;

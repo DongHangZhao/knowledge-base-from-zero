@@ -39,6 +39,105 @@ from collections import defaultdict
 sys.stdout.reconfigure(encoding="utf-8")
 
 
+def export_npmi(args):
+    """NPMI 图 + Louvain 社区 → 可视化数据。
+
+    与 raw 版的最大区别：**主题岛不再是「连通分量」，而是 Louvain 社区**。
+    共现图在 NPMI 加权后仍然是连通的（70 万条边），连通分量只剩 1 个，
+    画出来是一整坨；Louvain 会按「内部边密度」切开，才能看出主题结构。
+
+    选点也要按社区分配名额，否则取 top-N 度数会被最大的那个社区占满，
+    图上还是只有一片 —— 那等于没做社区检测。
+    """
+    import kg_ppr
+
+    db = os.path.abspath(args.db)
+    conn = sqlite3.connect("file:%s?mode=ro" % db.replace("\\", "/"), uri=True)
+    G, st = kg_ppr.build_graph(conn, min_df=args.min_df, min_w=args.min_w,
+                               weighting="npmi")
+    print("[graph] NPMI 图：%d 节点 / %d 边 / 覆盖文档 %d / 平均度 %.0f"
+          % (st["nodes"], st["edges"], st.get("graph_docs", 0), st["avg_degree"]))
+
+    comm, sizes = kg_ppr.communities(G, resolution=args.resolution)
+    print("[graph] Louvain 社区 %d 个 ｜ 前 8 大 %s" % (len(sizes), sizes[:8]))
+
+    # 按社区分配名额：大社区多给，但每个社区至少 3 个
+    deg = dict(G.degree(weight="w"))
+    by_comm = defaultdict(list)
+    for n, c in comm.items():
+        if n in G and G.degree(n) > 0:
+            by_comm[c].append(n)
+    # 只留最大的若干社区：25 个岛在侧栏排成一长条、图上还挤成一团，
+    # 信息量反而不如「8 个大岛 + 其余合并」。
+    order = sorted(by_comm, key=lambda c: -len(by_comm[c]))[:args.comps]
+    # 名额按「社区规模占全部选中社区的比例」分。
+    # 早期写成 /len(order)（社区个数），第一个社区一次吃掉全部预算，
+    # 结果「覆盖 1 个社区」——图上还是单色。
+    total_pool = sum(len(by_comm[c]) for c in order) or 1
+    budget = args.max_nodes
+    quota = {}
+    for c in order:
+        if budget <= 0:
+            break
+        n_alloc = max(3, int(round(args.max_nodes * len(by_comm[c]) / total_pool)))
+        quota[c] = min(n_alloc, len(by_comm[c]), budget)
+        budget -= quota[c]
+
+    keep = set()
+    for c, k in quota.items():
+        top = sorted(by_comm[c], key=lambda n: (-deg.get(n, 0), -G.nodes[n].get("df", 1)))
+        keep.update(top[:k])
+    print("[graph] 选点 %d 个（覆盖 %d 个社区）" % (len(keep), len(quota)))
+
+    # 边只留两端都在 keep 里的；权重按 NPMI 归一化到 0-100 便于可视化。
+    # 再按权重取前 max_links 条：130 个点配 3200 条边平均度 49，
+    # 画出来是毛线球，看不出结构。只留最强的那些边，结构反而清楚。
+    cand = []
+    wmax = max([d.get("w", 0) for _u, _v, d in G.edges(data=True)] or [1])
+    for u, v, d in G.edges(data=True):
+        if u in keep and v in keep:
+            cand.append((d.get("w", 0), u, v))
+    cand.sort(reverse=True)
+    if args.max_links and len(cand) > args.max_links:
+        cand = cand[:args.max_links]
+    edges = [{"source": u, "target": v, "w": round(w / wmax * 100, 2)}
+             for w, u, v in cand]
+
+    nodes = [{"id": n,
+              "df": G.nodes[n].get("df", 1),
+              "type": G.nodes[n].get("type", "noun"),
+              "deg": G.degree(n),
+              "comp": comm.get(n, -1)} for n in keep]
+    nodes.sort(key=lambda x: (-x["deg"], -x["df"]))
+
+    out = {
+        "meta": {
+            "db": os.path.basename(db),
+            "min_df": args.min_df, "min_w": args.min_w,
+            "max_nodes": args.max_nodes, "seed": None,
+            "nodes": len(nodes), "links": len(edges),
+            "docs": st.get("graph_docs", 0),
+            "chunks": st.get("total_chunks", 0),
+            "dict_size": 0, "mentions": st.get("pairs_raw", 0),
+            "weighting": "npmi",
+            "communities": len(sizes),
+            "built_at": __import__("datetime").datetime.now().isoformat(
+                timespec="seconds"),
+        },
+        "nodes": nodes,
+        "links": edges,
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)) or ".", exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    print("[graph] 已写出 %d 节点 / %d 边 → %s（%s 字节）"
+          % (len(nodes), len(edges), args.out,
+             "{:,}".format(os.path.getsize(args.out))))
+    print("[graph] 度数最高 8 个：%s" % [(n["id"], n["deg"]) for n in nodes[:8]])
+    conn.close()
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True)
@@ -48,9 +147,21 @@ def main(argv=None):
     ap.add_argument("--max-nodes", type=int, default=120)
     ap.add_argument("--comps", type=int, default=8,
                     help="保留几个连通分量（主题岛）；默认 8")
+    ap.add_argument("--max-links", type=int, default=900,
+                    help="最多保留多少条边（按权重取强边）")
+    ap.add_argument("--resolution", type=float, default=1.0,
+                    help="Louvain 分辨率（越大社区越多越碎）")
+    ap.add_argument("--weighting", choices=["raw", "npmi"], default="raw",
+                    help="边权算法：raw=共现次数；npmi=归一化点互信息（与 kg_ppr 一致）")
     ap.add_argument("--seed", default=None,
                     help="只导出与该实体 2 跳内相连的子图（主题视图）")
     args = ap.parse_args(argv)
+
+    # NPMI + 社区模式：直接复用 kg_ppr 的建图，
+    # 保证「可视化里看到的图」和「PPR 检索真正用的图」是同一张 ——
+    # 否则图上漂亮的簇在检索里根本不存在，分析半天对不上。
+    if getattr(args, "weighting", "raw") == "npmi":
+        return export_npmi(args)
 
     db = os.path.abspath(args.db)
     conn = sqlite3.connect("file:%s?mode=ro" % db.replace("\\", "/"), uri=True)
