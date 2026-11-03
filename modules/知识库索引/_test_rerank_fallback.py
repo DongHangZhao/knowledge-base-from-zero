@@ -56,7 +56,12 @@ def run(q, topk=5, min_env=None, rerank=True):
     else:
         os.environ["KB_RERANK_MIN"] = str(min_env)
     try:
-        conn = kb_index.connect()
+        # 🔴 readonly=True：这是只读回归测试，不该在生产库留任何痕迹。
+        # 原为裸 connect()，每跑一次测试就往 query_log 插一批行 ——
+        # 和 eval_rag 当初的毛病同源：检索埋点写在连接上，谁拿可写连接谁就污染。
+        # kb_index 对只读连接的 INSERT 有 except OperationalError 兜底，
+        # 所以改只读不会影响检索本身，只是不再埋点。
+        conn = kb_index.connect(readonly=True)
         try:
             return kb_rag.search_unified(conn, q, topk=topk, mode="fused", rerank=rerank)
         finally:

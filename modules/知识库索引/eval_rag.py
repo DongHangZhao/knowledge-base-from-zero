@@ -242,7 +242,23 @@ def main():
     if not os.path.exists(DB_PATH):
         print("索引不存在，先跑 build")
         sys.exit(1)
-    conn = sqlite3.connect(DB_PATH)
+    # 🔴 必须走只读连接。这一行是本模块最容易被「优化掉」的地方，说清楚为什么不能改：
+    #
+    # 原为 sqlite3.connect(DB_PATH)。评测每查一次，kb_index 的埋点就往 query_log
+    # 插一行 —— 于是「评测」这件纯读取的事，悄悄改写了生产库的业务表。
+    # 实测后果（2026-11-04 凌晨）：生产 query_log 6363 行里 5924 行是评测题，
+    # 占 93%，真人查询只剩 439 行。任何基于 query_log 的漏检归因分析，
+    # 都是建在 93% 噪声上的 —— 而这个污染**不报错、不影响检索**，只是让结论全错。
+    #
+    # kb_index.connect(readonly=True) 早就实现了这个能力，docstring 原话就是
+    # 「评测脚本并行跑时不会误改索引」——有设计，一直没被执行。
+    # kb_index 对只读连接的 query_log INSERT 有 except OperationalError 兜底，
+    # 所以改成只读不影响检索本身，只是不再埋点。
+    #
+    # 防回退：`_test_eval_readonly.py` 会验证「跑一次 eval，query_log 行数不变」，
+    # 这行被改掉测试就红。
+    import kb_index as _kb_conn
+    conn = _kb_conn.connect(DB_PATH, readonly=True)
 
     sets = []
     json_out = {}
@@ -334,19 +350,44 @@ def main():
         # 🔴 summary：把「唯一/最后一个评测集」的指标平铺一层（按 mode 分层），
         # 专供 kg_gate 决策门取数。原来只写 sets（三层嵌套），kg_gate 的 _pick
         # 在顶层找不到 recall / p95，决策门永远返回「无法判定（数据缺失）」。
-        summary = {}
+        # 🔴 summary 的 scope 必须显式写出来。
+        # 原实现取 list(json_out.values())[-1] —— 也就是「最后一个评测集」冒充全集。
+        # `--set all` 时顺序是 30条 / 100条 / multihop / holdout / auto，
+        # 于是 summary 里躺的是 auto（70 条弱标注集）的指标，而调用方（kg_gate、
+        # 各种报告脚本）看到键名叫 summary 就当成全集结论。
+        # 这是「数字看起来正常、结论全错」的典型 —— 比缺数危险得多。
+        #
+        # 改法：
+        #   · 单集 → summary 照旧平铺（向后兼容，不需要改任何既有调用方）
+        #   · 多集 → summary 留空 + summary_scope="multi" + 逐集写 summary_by_set
+        #     「显式失败优于静默误导」：拿到的 summary 是空字典，调用方会立刻发现，
+        #     而不是拿着 auto 的数字去汇报「全量评测结果」。
+        summary, summary_by_set, scope = {}, {}, "empty"
         if json_out:
-            last = list(json_out.values())[-1]
-            summary = {m: {k: v for k, v in d.items() if k != "misses"}
-                       for m, d in last["res"].items()}
+            def _flat(d):
+                return {k: v for k, v in d.items() if k != "misses"}
+            if len(json_out) == 1:
+                scope = "single"
+                one = next(iter(json_out.values()))
+                summary = {m: _flat(d) for m, d in one["res"].items()}
+            else:
+                scope = "multi"
+                summary_by_set = {
+                    v["name"]: {m: _flat(d) for m, d in v["res"].items()}
+                    for v in json_out.values()}
         payload = {"db": DB_PATH, "tokenizer": "jieba" if _kb.USE_JIEBA else "bigram",
                    "doc_count": conn.execute("SELECT COUNT(*) FROM docs").fetchone()[0],
                    "generated_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+                   "summary_scope": scope,
                    "summary": summary,
+                   "summary_by_set": summary_by_set,
                    "sets": json_out}
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
-        print("JSON 已写入: %s" % args.json)
+        print("JSON 已写入: %s（summary_scope=%s）" % (args.json, scope))
+        if scope == "multi":
+            print("   ⚠ 本次是多集评测，summary 故意留空（防止「最后一个集」冒充全集）；"
+                  "逐集指标见 summary_by_set")
     conn.close()
 
 

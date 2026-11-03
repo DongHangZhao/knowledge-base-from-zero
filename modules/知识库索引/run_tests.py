@@ -69,6 +69,8 @@ SUITES = [
     ("_test_kb_profile.py",     "人设配置",     "三档矩阵 / env 优先 / 无隐私项"),
     ("_test_query_rewrite.py",  "查询改写",     "L0 确定性 fanout / 短查询不拆 / HyDE 超时回落"),
     ("_test_kg.py",             "图谱实验门",   "实体抽取 / 1-hop 邻居 / 决策门边界"),
+    ("_test_kg_terms.py",       "领域词典抽取", "标题挖词 / 注入后短语不碎 / 路径碎片过滤"),
+    ("_test_eval_readonly.py",  "评测不写库",   "eval 走只读连接 + 跑完 query_log 不增（污染回归钉）"),
 ]
 
 # B4 编码口径一致性验收：要真编码（import torch 约 170s + 模型 19s），**默认不进**
