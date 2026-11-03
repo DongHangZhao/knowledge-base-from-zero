@@ -18,6 +18,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -118,23 +119,67 @@ def search_unified_mode(conn, query, topk, rewrite=None):
     return res
 
 
+def _mode_fn(mode, rewrite=None):
+    """mode 名 → 检索函数。
+
+    拆成独立函数是为了让「预热」和「正式评测」走**同一个**调用口径 ——
+    两处各写一份 lambda 的话，改一处忘另一处，预热就变成了测别的东西。
+    """
+    if mode == "unified":
+        return lambda c, q, k: search_unified_mode(c, q, k, rewrite)
+    return {"fts": search_fts, "fts_chunk": search_fts_chunks,
+            "fts_fused": search_fts_fused,
+            "tfidf": search_tfidf, "hybrid": search_hybrid,
+            "vec": search_vec, "fused_vec": search_fused_vec,
+            "bge": search_bge, "fused_bge": search_fused_bge,
+            "fused_tri": search_fused_tri,
+            "hybrid_w2": lambda c, q, k: search_hybrid(c, q, k, w_fts=2.0, w_tfidf=1.0)}[mode]
+
+
+def _quantile(vals, p):
+    """线性插值分位数（ms）。
+
+    为什么不用 nearest-rank：30 条样本下 nearest-rank 的 p95 恒等于 max，
+    一条抖动就决定结论 —— 那测的不是 p95，是「碰巧最慢的那条」。
+    """
+    if not vals:
+        return None
+    s = sorted(vals)
+    if len(s) == 1:
+        return s[0]
+    pos = (len(s) - 1) * p
+    lo = int(pos)
+    hi = min(lo + 1, len(s) - 1)
+    return s[lo] + (s[hi] - s[lo]) * (pos - lo)
+
+
 def evaluate(conn, items, topk=TOPK, rewrite=None):
-    """返回 {mode: {"recall": x, "mrr": y, "misses": [...]}}"""
+    """返回 {mode: {"recall","mrr","ndcg10","misses","p50","p95","pmax"}}
+
+    🔴 **p95 是 #41 决策门的左右腿之一**（另一条是 R@5）。没有延迟就没法判
+    「值不值」——收益 +3pp 但慢 800ms 的方案在交互场景是负收益。
+    """
     modes = _modes(rewrite)
-    result = {m: {"hit": 0, "hit1": 0, "rr_sum": 0.0, "ndcg_sum": 0.0, "misses": []}
+    result = {m: {"hit": 0, "hit1": 0, "rr_sum": 0.0, "ndcg_sum": 0.0,
+                  "misses": [], "elapsed": []}
               for m, _ in modes}
+    # 🔴 预热一轮：模型加载 / jieba 首次分词 / SQLite 页缓存全落在第一条查询上。
+    # 不预热的话 bge 路第一条 800ms+，p95 被冷启动污染，
+    # 会出现「加了图谱反而更快」这种不可能的结论。
+    if items:
+        warm_q = items[0]["query"]
+        for mode, _ in modes:
+            try:
+                _mode_fn(mode, rewrite)(conn, warm_q, topk)
+            except Exception:
+                pass
     for item in items:
         q, gt = item["query"], item["gt"]
         for mode, _ in modes:
-            fn = {"fts": search_fts, "fts_chunk": search_fts_chunks,
-                  "fts_fused": search_fts_fused,
-                  "tfidf": search_tfidf, "hybrid": search_hybrid,
-                  "vec": search_vec, "fused_vec": search_fused_vec,
-                  "bge": search_bge, "fused_bge": search_fused_bge,
-                  "fused_tri": search_fused_tri,
-                  "unified": lambda c, q2, k: search_unified_mode(c, q2, k, rewrite),
-                  "hybrid_w2": lambda c, q, k: search_hybrid(c, q, k, w_fts=2.0, w_tfidf=1.0)}[mode]
+            fn = _mode_fn(mode, rewrite)
+            _t0 = time.perf_counter()
             hits = fn(conn, q, topk)
+            result[mode]["elapsed"].append((time.perf_counter() - _t0) * 1000.0)
             # 用 metrics 统一口径（与 metrics.py 单测一致；单条 gt 时 NDCG=1/log2(rank+1)）
             ranked = [h["path"] for h in hits]
             mm = _metrics.ranking_metrics(ranked, gt, ks=(1, topk))
@@ -154,6 +199,10 @@ def evaluate(conn, items, topk=TOPK, rewrite=None):
         r["recall1"] = r["hit1"] / n if n else 0
         r["ndcg10"] = r["ndcg_sum"] / n if n else 0
         r["mrr"] = r["rr_sum"] / n if n else 0
+        elapsed = r.pop("elapsed", [])
+        r["p50"] = _quantile(elapsed, 0.50)
+        r["p95"] = _quantile(elapsed, 0.95)
+        r["pmax"] = max(elapsed) if elapsed else None
     return result
 
 
@@ -163,20 +212,24 @@ def fmt_pct(x):
 
 def render_table(res, n, modes=None):
     lines = []
-    lines.append("| 检索方式 | Recall@%d | MRR@%d | NDCG@10 | 未命中 |" % (TOPK, TOPK))
-    lines.append("|---------|---------|--------|---------|--------|")
+    lines.append("| 检索方式 | Recall@%d | MRR@%d | NDCG@10 | 未命中 | p50 | p95 |" % (TOPK, TOPK))
+    lines.append("|---------|---------|--------|---------|--------|-----|-----|")
     for mode, label in (modes or MODES):
         r = res[mode]
-        lines.append("| %s | %s | %.4f | %.4f | %d |" % (
-            label, fmt_pct(r["recall"]), r["mrr"], r.get("ndcg10", 0), n - r["hit"]))
+        p50, p95 = r.get("p50"), r.get("p95")
+        lines.append("| %s | %s | %.4f | %.4f | %d | %s | %s |" % (
+            label, fmt_pct(r["recall"]), r["mrr"], r.get("ndcg10", 0), n - r["hit"],
+            "%.0fms" % p50 if p50 is not None else "-",
+            "%.0fms" % p95 if p95 is not None else "-"))
     return "\n".join(lines)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", choices=["30", "100", "both", "auto", "all", "multihop"],
+    ap.add_argument("--set", choices=["30", "100", "both", "auto", "all", "multihop", "holdout"],
                     default="both",
-                    help="multihop = 多跳子集（#41 图谱实验用，真集放 state/ 不入库）")
+                    help="multihop = 多跳子集（#41 图谱实验用，真集放 state/ 不入库）；"
+                         "holdout = 60 条留出集（调参时可看、调完后才算数）")
     ap.add_argument("--k", type=int, default=None, help="Recall/MRR/NDCG 的 cutoff k（默认 5）")
     ap.add_argument("--json", help="结果另存 JSON（供 ablation.py 做对照）")
     ap.add_argument("--quiet", action="store_true", help="少打印，供脚本调用")
@@ -201,6 +254,11 @@ def main():
     if args.set == "multihop":
         # #41 实验集：真集放 state/（gitignore），仓库里只有 eval_sets/*.example.json 占位
         sets.append(("多跳子集 30 条（#41 实验）", os.path.join(S, "kb_eval_multihop_30.json")))
+    if args.set in ("holdout", "all"):
+        # 🔴 留出集（2026-11-03 接入）：文件早就在 state/ 下，但 eval_rag 从来没读过它，
+        # 等于「留出集白留」—— 调参时看不到、改完也不复核。它的用途是
+        # **调完参数后再看一次**：30/100 集上看涨、holdout 上不涨，就说明是过拟合。
+        sets.append(("留出集 60 条（调参后复核用）", os.path.join(S, "kb_eval_holdout.json")))
     if args.set in ("auto", "all"):
         p = os.path.join(S, "kb_eval_auto.json")
         if os.path.exists(p):
@@ -243,6 +301,8 @@ def main():
                                       "recall1": res[m]["recall1"],
                                       "ndcg10": res[m].get("ndcg10", 0),
                                       "mrr": res[m]["mrr"],
+                                      "p50": res[m].get("p50"),
+                                      "p95": res[m].get("p95"),
                                       "misses": res[m]["misses"]}
                                   for m, _ in _modes(args.rewrite)}}
         if not args.quiet:
@@ -271,9 +331,18 @@ def main():
     print("\n报告已写入: %s" % out)
     if args.json:
         import kb_index as _kb
+        # 🔴 summary：把「唯一/最后一个评测集」的指标平铺一层（按 mode 分层），
+        # 专供 kg_gate 决策门取数。原来只写 sets（三层嵌套），kg_gate 的 _pick
+        # 在顶层找不到 recall / p95，决策门永远返回「无法判定（数据缺失）」。
+        summary = {}
+        if json_out:
+            last = list(json_out.values())[-1]
+            summary = {m: {k: v for k, v in d.items() if k != "misses"}
+                       for m, d in last["res"].items()}
         payload = {"db": DB_PATH, "tokenizer": "jieba" if _kb.USE_JIEBA else "bigram",
                    "doc_count": conn.execute("SELECT COUNT(*) FROM docs").fetchone()[0],
                    "generated_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+                   "summary": summary,
                    "sets": json_out}
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)

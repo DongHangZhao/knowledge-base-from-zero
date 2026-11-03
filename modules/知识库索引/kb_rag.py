@@ -450,7 +450,7 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
     since: 'YYYY-MM-DD' 或 epoch 秒——只返 mtime >= 该日期的文档（T3 元数据过滤）。
     path_prefix: 只返 path 以该前缀开头的文档（如 'wiki/技术'）。
     两个过滤都在**融合后、rerank 前**执行（理由见下方注释）。
-    rewrite: 改写档位 off|l0|l1|l2（#39）。None = 读 `KB_REWRITE`（默认 l0）；
+    rewrite: 改写档位 off|l0|l1|l2（#39）。None = 读 `KB_REWRITE`（默认 off，见 query_rewrite.DEFAULT_LEVEL）；
              **`rewrite="off"` 时行为与改造前逐位一致**（回滚开关，零代码）。
 
     🔴 改写只作用于**召回**：精排（rerank）、摘要补齐（_enrich）、查询日志（log_query）
@@ -1459,7 +1459,7 @@ def main():
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
-    # #39 改写档位（默认 None = 读 KB_REWRITE，再回落 l0；off 与改造前逐位一致）
+    # #39 改写档位（默认 None = 读 KB_REWRITE，再回落 DEFAULT_LEVEL=off；off 与改造前逐位一致）
     p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
                    help="查询改写档位：off=不改写（=改造前行为）/ l0=确定性拆分（默认）/ "
                         "l1=+去口语 / l2=+HyDE（需 KB_HYDE=1 且有 KB_HYDE_CMD）")
@@ -1478,7 +1478,7 @@ def main():
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
     p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
-                   help="查询改写档位（同 search；默认读 KB_REWRITE，再回落 l0）")
+                   help="查询改写档位（同 search；默认读 KB_REWRITE，再回落 off）")
     p.set_defaults(func=cmd_ask)
     p = sub.add_parser("stats")
     p.set_defaults(func=cmd_stats)

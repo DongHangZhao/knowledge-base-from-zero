@@ -176,7 +176,11 @@ def main():
     a = Q.plan("知识库 和 wiki 有啥区别", level="l0", env={}).as_dict()
     b = Q.plan("知识库 和 wiki 有啥区别", level="l0", env={}).as_dict()
     check("⑧ 纯函数：同输入两次计划完全相同", a == b)
-    check("⑧b 非法档名回落 l0（level==1）", Q._norm_level("no-such") == 1, Q._norm_level("no-such"))
+    # 非法档名回落到 DEFAULT_LEVEL。2026-11-03 默认由 l0 改 off 后，断言跟着改：
+    # 实测 L0 在 100 条集上无正收益（见 query_rewrite.DEFAULT_LEVEL 注释），
+    # 所以「打错档名」的安全兜底应该是「什么都不做」而不是「悄悄开改写」。
+    check("⑧b 非法档名回落 off（level==0，= DEFAULT_LEVEL）",
+          Q._norm_level("no-such") == Q.LEVELS[Q.DEFAULT_LEVEL], Q._norm_level("no-such"))
     check("⑧c off 归一成 0 / l2 归一成 3",
           (Q._norm_level("off"), Q._norm_level("l2"), Q._norm_level("OFF")) == (0, 3, 0))
     check("⑧d 空查询不抛、返回空子查询", Q.plan("", level="l0", env={}).subqueries == [])

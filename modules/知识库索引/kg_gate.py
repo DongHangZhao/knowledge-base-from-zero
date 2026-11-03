@@ -221,6 +221,33 @@ def _load(path):
         return json.load(f)
 
 
+def _squash(payload, mode=None):
+    """从 eval_rag 的结果 json 里取出**指定 mode** 的指标层。
+
+    为什么需要这层：eval_rag 写的是
+        {summary: {<mode>: {recall, p95, ...}}, sets: {<set>: {res: {<mode>: ...}}}}
+    而本模块的 `_pick` 只在「顶层 / summary 一层 / res 一层」找 `recall`、`p95`。
+    两处口径从没对齐过 —— 直接把 payload 丢进来，决策门恒返回「无法判定」。
+
+    Args:
+        payload: eval_rag 的 --json 输出（也接受历史版本的无 summary 平铺 dict）。
+        mode:    要取哪一路（如 `unified` / `kg_treat`）。summary 只有一个键时可省略。
+
+    Returns:
+        指标 dict；找不到时原样返回 payload，交由 `decide` 报「数据缺失」。
+    """
+    if not isinstance(payload, dict):
+        return payload
+    summ = payload.get("summary")
+    if not isinstance(summ, dict) or not summ:
+        return payload                      # 历史平铺格式，直接交给 _pick
+    if mode:
+        return summ.get(mode) or payload
+    if len(summ) == 1:
+        return next(iter(summ.values()))
+    return payload                          # 多路又没指定 → 让 decide 报缺数，别猜
+
+
 def write_decision(path, res, baseline_path, treat_path):
     """生成决策文档（`docs/decisions/KG-41.md` 的模板 + 实测数字）。"""
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -267,6 +294,10 @@ def main(argv=None):
     ap.add_argument("--treat", required=True, help="treat 结果 json（+1-hop）")
     ap.add_argument("--write-decision", default=None, metavar="PATH",
                     help="把判定写成 docs/decisions/KG-41.md")
+    ap.add_argument("--mode", default=None,
+                    help="取 eval json 里哪一路的指标（如 unified / kg_treat）；单路时可省略")
+    ap.add_argument("--baseline-mode", default=None,
+                    help="baseline 单独指定 mode（两路名字不同时用）")
     args = ap.parse_args(argv)
 
     try:
@@ -274,6 +305,8 @@ def main(argv=None):
     except Exception as e:
         print("[ERR] 读不到结果文件：%s" % str(e)[:120], file=sys.stderr)
         return 2
+    base = _squash(base, args.baseline_mode or args.mode)
+    treat = _squash(treat, args.mode)
 
     res = decide(base, treat)
     print("== #41 图谱 1pt 实验 · 决策门 ==")
