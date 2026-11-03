@@ -83,8 +83,14 @@ out = try_lock_child()
 check("第二个进程被拒", out.startswith("BUSY"), "→ " + out[:70])
 
 print("\n=== 2. 🔴 强杀后锁自动释放（OS 层保证）===")
-subprocess.run(["taskkill", "/F", "/PID", str(p.pid)],
-               capture_output=True, text=True)
+# 🔴 跨平台：`taskkill` 是 Windows 专用命令，Linux/macOS 上直接抛 FileNotFoundError，
+# 整条测试异常退出（CI 里表现为「2 PASS / 0 FAIL 但 rc≠0」——看着像断言全过，其实没跑完）。
+# POSIX 用 SIGKILL，语义等价：进程被强杀、不留清理机会，靠 OS 释放锁。
+if os.name == "nt":
+    subprocess.run(["taskkill", "/F", "/PID", str(p.pid)],
+                   capture_output=True, text=True)
+else:
+    p.kill()                      # SIGKILL
 time.sleep(1.5)
 out2 = try_lock_child()
 check("强杀后能重新拿到锁", out2.startswith("GOT"), "→ " + out2[:70])
