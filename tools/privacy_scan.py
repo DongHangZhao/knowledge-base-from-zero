@@ -113,6 +113,30 @@ def iter_files(root):
             yield p, os.path.relpath(p, root).replace("\\", "/")
 
 
+def iter_git_files(root):
+    """只产出 **git 会推送的文件**（`git ls-files`）。
+
+    为什么需要这个（2026-11-04）：默认 `os.walk` 会把 `state/` 下的运行时产物
+    （评测结果 json、kb.db-wal/-shm）一起扫进去，而这些已被 `.gitignore` 排除、
+    **永远不会被 push**。结果就是发版门禁被一堆「本机临时文件里的真实路径」卡死，
+    而真正会外泄的入库文件反而淹没在噪声里 —— 门禁变成「每次都红」，最后没人看。
+
+    发布门禁应当扫的是「将要推出去的东西」，也就是 git 索引里的文件。
+    """
+    import subprocess
+    out = subprocess.run(["git", "-C", root, "ls-files", "-z"],
+                         capture_output=True, timeout=120)
+    if out.returncode != 0:
+        raise SystemExit("[ERR] git ls-files 失败：%s"
+                         % out.stderr.decode("utf-8", "replace")[:200])
+    for rel in out.stdout.decode("utf-8", "replace").split("\0"):
+        if not rel:
+            continue
+        p = os.path.join(root, rel.replace("/", os.sep))
+        if os.path.isfile(p):
+            yield p, rel
+
+
 def ctx(text, start, end, pad=45):
     a = max(0, start - pad)
     b = min(len(text), end + pad)
@@ -343,6 +367,9 @@ def main():
     ap.add_argument("--json", action="store_true", help="输出 JSON")
     ap.add_argument("--self-test", action="store_true", help="只跑规则自检")
     ap.add_argument("--no-assets", action="store_true", help="跳过 exe/zip 等 Release 资产")
+    ap.add_argument("--git-only", action="store_true",
+                    help="只扫 git 追踪的文件（= 真正会推送的内容）。"
+                         "发版门禁该用这个：默认会连 .gitignore 掉的运行时产物一起扫，噪声压过信号")
     args = ap.parse_args()
 
     if args.self_test:
@@ -351,7 +378,8 @@ def main():
     root = os.path.abspath(args.root)
     terms = load_terms(args.terms)
     hits, files, skipped = [], 0, []
-    for path, rel in iter_files(root):
+    walker = iter_git_files(root) if args.git_only else iter_files(root)
+    for path, rel in walker:
         if rel in SELF_IGNORE:
             skipped.append(rel)
             continue
