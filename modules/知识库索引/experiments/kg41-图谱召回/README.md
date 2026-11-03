@@ -156,6 +156,11 @@ KB_W_KG=1.5 $PY -u experiments/kg41-图谱召回/kg_eval_both_hit.py ...
 | `history/build_sidecar_scope.py` | 按评测集范围建侧表 | 低，v3 已内置 |
 | `results/*.json` | 各轮评测原始结果 | ⭐ 高。结论的证据 |
 
+> ⚠️ `results/` 里的原始 json 含真实查询文本与文档路径，**不入开源仓库**。
+> 实际存放位置：知识库 `outputs/知识库运维/kg41-results/`（8 个文件，含
+> `kg_base` / `kg_treat` / `mh_off` / `holdout_*` / `ab100_*`）。
+> 复跑生成的新结果请放回该目录，不要提交。
+
 正身（已进主目录，不是实验代码）：
 `kg_terms.py`（领域词典 + 短语抽取）、`build_sidecar_v3.py`、
 `export_kg_graph.py`（图数据导出）、`build_kg_viz.py`（可视化）
