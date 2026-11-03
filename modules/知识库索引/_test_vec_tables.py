@@ -218,15 +218,31 @@ def main():
 
     # ⑫ 🔴 no-model 日志必须**按档位说话**（QA 揪出的前后矛盾：日志说"本档不判红"、
     #    调用方随后却真的返回 rc=3）。这里直接调 kb_rag.backfill_m3 抓 stderr 文案。
+    #
+    # 🔴 2026-11-03 修：原来靠 `os.environ["KB_M3_MODEL_DIR"] = 不存在路径` 制造 no-model。
+    #    这在仓库侧能过（默认路径 models/bge-m3 本来就不存在），但在**生产侧必然失败** ——
+    #    因为 `kb_rag.M3_MODEL_DIR` / `bge_encoder.M3_MODEL_DIR` 都是**模块级常量**，
+    #    在 import 那一刻就绑定好了，之后再改 env 根本不生效；而生产机
+    #    E:/kb_models/bge-m3 是真实存在的，于是 status 永远不是 no-model。
+    #    正解：直接 patch 模块属性（import 后生效），与"机器上有没有模型"无关。
     try:
         import contextlib
         import io
         import kb_rag
         keep = {k: os.environ.get(k) for k in
                 ("KB_BACKFILL_M3", "KB_M3_MODEL_DIR", "KB_STRICT_VEC")}
+        # 两处都要动，因为两侧实现不同：
+        #   · 仓库侧 `backfill_m3` 在**函数内**读 os.environ["KB_M3_MODEL_DIR"] → 改 env 有效
+        #   · 生产侧为了指 E:/kb_models 把路径提成了**模块级常量** kb_rag.M3_MODEL_DIR
+        #     → import 后改 env 无效，必须 patch 属性
+        # 只做其中一种，另一半环境就会静默跳过（skipped），测试等于没跑。
+        old_m3dir = getattr(kb_rag, "M3_MODEL_DIR", None)
+        _nodir = os.path.join(HERE, "_no_such_m3_model_dir_")
         try:
             conn4 = make_conn()          # 5 chunk / 3 m3 → 缺口 2
-            os.environ["KB_M3_MODEL_DIR"] = os.path.join(HERE, "_no_such_m3_model_dir_")
+            os.environ["KB_M3_MODEL_DIR"] = _nodir
+            if old_m3dir is not None:
+                kb_rag.M3_MODEL_DIR = _nodir
             os.environ.pop("KB_STRICT_VEC", None)     # 默认严格
             os.environ["KB_BACKFILL_M3"] = "1"
             buf = io.StringIO()
@@ -259,6 +275,8 @@ def main():
                   msg_limit.strip()[:80])
             conn4.close()
         finally:
+            if old_m3dir is not None:
+                kb_rag.M3_MODEL_DIR = old_m3dir      # 恢复模块常量（若有）
             for k, v in keep.items():
                 if v is None:
                     os.environ.pop(k, None)

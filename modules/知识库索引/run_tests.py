@@ -79,7 +79,32 @@ if os.environ.get("KB_RUN_B4_CHECK") == "1":
     SUITES.append(("_sandbox_b4_check.py", "B4 编码口径",
                    "backfill 与 cmd_build 两条路径同口径（余弦>0.999）"))
 
-PASS_RE = re.compile(r"\[(PASS|FAIL)\]")
+# 🔴 计数正则同时认两种标记（2026-11-04）：
+#   `[PASS]` / `[FAIL]`  —— 本仓库测试的统一契约
+#   `✅` / `❌`（行首）  —— 生产侧几套老测试（_test_rerank_fallback / test_dashboard_equiv）
+#                            一直是这个格式
+# 只认前一种时，那几套测试虽然跑了 50s / 226s、**一条断言都没被计数**，汇总显示
+# 「OK (0 PASS / 0 FAIL)」—— 这就是最危险的假绿：跑得久、显示绿、实际没测。
+# 用 `^` 锚定行首，避免正文里提到 ✅ 被误算。
+PASS_RE = re.compile(r"\[(PASS|FAIL)\]|^(✅|❌)", re.MULTILINE)
+
+
+def count_marks(out):
+    """数 [PASS]/[FAIL] 与行首 ✅/❌，返回 (passed, failed)。
+
+    🔴 必须用 finditer 逐个人工归组，**不能用 findall + list.count**：
+    `findall` 在有捕获组时返回 tuple，`hits.count("PASS")` 会恒等于 0，
+    于是所有测试都显示「0 PASS / 0 FAIL」而汇总仍然「OK」—— 全场假绿。
+    （这是第一次改这个正则时踩到的，别再用 findall 计数。）
+    """
+    passed = failed = 0
+    for m in PASS_RE.finditer(out or ""):
+        tag = m.group(1) or ("PASS" if m.group(2) == "✅" else "FAIL")
+        if tag == "PASS":
+            passed += 1
+        else:
+            failed += 1
+    return passed, failed
 
 
 def run_one(fname, timeout=600):
@@ -99,9 +124,7 @@ def run_one(fname, timeout=600):
         out, rc = "TIMEOUT", -1
     dur = round(time.time() - t0, 1)
 
-    hits = PASS_RE.findall(out)
-    passed = hits.count("PASS")
-    failed = hits.count("FAIL")
+    passed, failed = count_marks(out)
     return {"ok": rc == 0, "missing": False, "passed": passed, "failed": failed,
             "duration": dur, "tail": out.strip().splitlines()[-1][:160] if out.strip() else "",
             "rc": rc}
