@@ -28,6 +28,7 @@ import json
 import time
 import sqlite3
 import datetime
+import subprocess
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -112,6 +113,76 @@ PRIVACY_NOTE = ingest_raw.PRIVACY_NOTE
 
 def say(msg):   # 进度一律走 stderr：stdout 只留给 --json 结果，门户才解析得动
     print(msg, file=sys.stderr)
+
+
+# ---------- build 自动补 m3（W1-C-4 机制根治，2026-11-04）----------
+# 为什么要有这段：本进程 import 的 torch 是 `+cpu` 版，`backfill_m3()` 按 auto 档
+#   「无 CUDA 只跳过、不失败」，于是**每次增量 build 都留缺口**；而 `doctor` 只看
+#   chunk_bge 仍报 100%，退化是静默的。靠「人记得手工跑 GPU venv」挡不住复发
+#   （2026-11-04 19:17 实证：上一轮收尾全绿后，别的窗口跑一次 build 又缺 33 块）。
+# 为何用子进程：同一进程无法把 CPU 版 torch 换成 CUDA 版，只能外部解释器跑；
+#   且必须在主连接 conn.close() 之后调用，否则与本次 build 的写锁冲突。
+# 边界：① 仅当本机存在 GPU venv 时触发，不存在则维持原行为（个人档不判红）；
+#   ② `--skip-vec` / `--limit` 分批构建不触发（那是操作者显式选择）；
+#   ③ 补失败只告警、不影响 build 的 rc（补向量不该把文本构建搞红）。
+GPU_VENV_PY = os.environ.get("KB_GPU_PY") or r"E:\_venvs\gpu\Scripts\python.exe"
+
+
+def _m3_missing_now():
+    """只读查当前 m3 缺块数；查不到返回 -1（不阻断）。"""
+    try:
+        conn = kb_index.connect(readonly=True)
+        try:
+            n = conn.execute(
+                "SELECT COUNT(*) FROM chunks c WHERE NOT EXISTS"
+                "(SELECT 1 FROM vec_m3 v WHERE v.chunk_id = c.id)").fetchone()[0]
+        finally:
+            conn.close()
+        return n
+    except Exception:
+        return -1
+
+
+def auto_backfill_m3(reason=""):
+    """用 GPU venv 子进程补 m3 缺块。返回 (status, detail)。
+
+    status：done=补齐且复验缺口 0｜nogpu=本机无 GPU venv（保持原行为）｜
+            fail=补失败（缺口保留，需手工）｜skip=本来就没缺口
+    幂等：vector_backfill.py 只写缺失 id，不碰已有向量；最多重试 2 轮，
+          因为补的过程中若别的窗口在 build，chunk 会继续增长（2026-11-04 实证）。
+    """
+    if not os.path.exists(GPU_VENV_PY):
+        return "nogpu", GPU_VENV_PY
+    script = os.path.join(HERE, "vector_backfill.py")
+    if not os.path.exists(script):
+        return "fail", "vector_backfill.py 不存在"
+    for attempt in (1, 2):
+        lag = _m3_missing_now()
+        if lag == 0:
+            return "skip" if attempt == 1 else "done", "缺口 0"
+        if lag < 0:
+            return "fail", "缺块数查询失败"
+        say("[build] 🔧 自动补 m3：缺口 %d（第 %d 轮，GPU venv 子进程）…" % (lag, attempt))
+        try:
+            p = subprocess.run(
+                [GPU_VENV_PY, "-u", script, "--skip-bge", "--batch", "16"],
+                cwd=HERE, capture_output=True, text=True, timeout=1800)
+            # vector_backfill.py 的 rc=5 只表示「四表行数不等」（历史孤儿行让它长期不等），
+            # 不是补块失败 —— 判据看复验的 missing，不看它的 rc（速查表 §4 有同样口径）。
+            if p.returncode not in (0, 5):
+                tail = (p.stderr or p.stdout or "").strip().replace("\n", " ")[-300:]
+                say("   ⚠️ GPU 补齐异常 rc=%s：%s" % (p.returncode, tail))
+            elif lag > 0:
+                say("   ✓ 已编码，用时见上（rc=%s）" % p.returncode)
+        except subprocess.TimeoutExpired:
+            return "fail", "GPU 补齐超时（>30min）"
+        except Exception as e:
+            return "fail", "%s: %s" % (type(e).__name__, str(e)[:120])
+    lag = _m3_missing_now()
+    if lag == 0:
+        return "done", "缺口 0"
+    return "fail" if lag > 0 else "done", "剩余缺口 %s" % lag
+
 
 
 # ---------- 字级 substring 路 ----------
@@ -365,6 +436,18 @@ def _enrich(conn, items, query):
         it["coverage"] = (round(len(it["matched"]) / len(toks), 2) if toks else None)
         it.pop("chunk_text", None)
         it.pop("summary", None)
+        # ---- 出口门禁（2026-11-04，随 .xls 开摄一起上；作者批 A 方案的第二道门）----
+        # 🔴 为什么必须下沉到 _enrich（而不是只在 cmd_ask 输出层挡）：
+        #   `search` / `--json` / 门户 / 任何直接调 `search_unified` 的调用方
+        #   拿到的都是同一批 items，只有 cmd_ask 挡 = 其他出口裸奔。
+        #   门禁要在**出口统一**做，不能指望每个调用方自己记得挡。
+        # 🔴 为什么不是「不返回这条结果」：返回路径仍有用（知道库里有、可本地打开），
+        #   断掉的是**正文与命中词**——那才是会被拼进模型上下文、被复制外传的部分。
+        if is_privacy_path(it.get("path")):
+            it["snippet"] = PRIVACY_EXPORT_MARK
+            it["matched"] = []
+            it["coverage"] = None
+            it["redacted"] = True
     return items
 
 
@@ -1251,6 +1334,21 @@ def _cmd_build_body(args):
                "分批构建（--limit）" if args.limit else "KB_BACKFILL_M3=%s" % m3_mode))
     say("[build] 完成。%s" % PRIVACY_NOTE)
     conn.close()
+    # 🔴 W1-C-4 机制根治（2026-11-04，生产侧实证后回流）：主连接关闭后再补 m3，避免写锁冲突。
+    #    触发条件刻意收紧：全量构建 + 未 --skip-vec + 当时确有缺口。
+    #    无 GPU venv 的机器维持原行为（打一行提示，不改 rc）。
+    if (not getattr(args, "skip_vec", False)) and not args.limit and rep.get("lag_m3", 0) > 0:
+        _st, _detail = auto_backfill_m3()
+        if _st == "done":
+            say("[build] ✓ 自动补 m3 完成（%s）" % _detail)
+        elif _st == "skip":
+            say("[build] m3 无缺口（%s）" % _detail)
+        elif _st == "nogpu":
+            say("[build] ⓘ 未发现 GPU venv（%s），m3 缺口 %d 保留 —— 个人档允许状态，"
+                "需要时手工跑 vector_backfill.py" % (_detail, rep["lag_m3"]))
+        else:
+            say("⚠️ 自动补 m3 失败（%s），缺口 %d 保留；可手工跑 vector_backfill.py"
+                % (_detail, rep["lag_m3"]))
     return 0
 
 

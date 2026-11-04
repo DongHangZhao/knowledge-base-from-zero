@@ -65,7 +65,7 @@ DEFAULT_SPEC_POWER = 1.0      # 节点特异性指数：1.0 = 1/df 线性降权
 # ---------------------------------------------------------------- 建图
 def build_graph(conn, min_df=2, min_w=2, idf_weight=True, n_docs=None,
                 max_entities=None, weighting="npmi", max_df_ratio=0.35,
-                max_deg_df_ratio=25.0):
+                max_deg_df_ratio=25.0, synonym=False, alias_map=None):
     """从 chunk_entities 建实体共现图。
 
     返回 (nx.Graph, stats)
@@ -236,11 +236,25 @@ def build_graph(conn, min_df=2, min_w=2, idf_weight=True, n_docs=None,
                   % (len(dropped_v), max_deg_df_ratio,
                      sorted(dropped_v, key=lambda e: -G.degree(e) if e in G else 0)[:6]))
 
+    # 🔴 实体链接 / 同义词边（HippoRAG 2 的 synonym edge，本地化零 LLM）。
+    # 默认关闭（synonym=False）：不改动既有评测口径。
+    # 显式打开后才加 —— 这是「关系抽取前置」，先让「集群五大系统 / 五大系统 /
+    # 那批系统」在图上连通，PPR 种子落在任一表述都能传到其他表述。
+    added_syn = []
+    if synonym:
+        added_syn = add_synonym_edges(G, alias_map=alias_map,
+                                     min_df=min_df, min_len=4, weight=1.0)
+        if added_syn:
+            print("[kg_ppr] 同义词边 %d 条：%s"
+                  % (len(added_syn),
+                     [(a, b) for a, b, _s in added_syn[:6]]))
+
     stats = {
         "nodes": G.number_of_nodes(),
         "edges": G.number_of_edges(),
         "graph_docs": graph_docs,
         "dropped_filler": len(dropped_v),
+        "synonym_edges": len(added_syn),
         "pairs_raw": len(pair),
         "docs": n_docs,
         "total_chunks": total_chunks,
@@ -616,6 +630,109 @@ def communities(graph, resolution=1.0, seed=42):
             comm[n] = ci
     sizes = [len(p) for p in sorted(parts, key=len, reverse=True)]
     return comm, sizes
+
+
+# ---------------------------------------------------------------- 实体链接 / 同义词边（HippoRAG 2 的 synonym edge，本地化零 LLM）
+#
+# 为什么需要（这是上一轮自己点名的「关系抽取前置」）：
+#   「集群五大系统 / 那批系统 / 五个系统」在图里是三个孤立节点，PPR 种子落在
+#   其中一个，概率传不到另外几个 —— 跨表述跳不过去，等于把起点锁死。
+#   HippoRAG 2 用向量 sim≥0.8 加同义词边；KAG 用语义对齐。我们没钱调嵌入，
+#   用**确定性规则**做保守归并：显式别名表 + 极严的后缀归一。
+#
+# 设计原则（守住不误并）：
+#   · 宁可不合并，也不错并（错并把两个不同概念焊死，扩散必跑偏，比漏并更糟）
+#   · 只在「图层级」操作节点名 + df，不需要 jieba（输入是实体表，不是原文）
+#   · 默认不开启；build_graph(synonym=True) 才加，实验脚本显式打开
+#   · 返回合并清单，可被人工审计
+
+# 通用后缀：A == B + 这些后缀，且 B 是实词，才可能同一实体（如「血透系统」↔「血透」）
+_GENERIC_SUFFIX = {
+    "系统", "平台", "项目", "软件", "方案", "模块", "中心", "库",
+    "服务", "引擎", "组件", "设备", "终端", "网", "机",
+}
+
+# 显式别名表（canonical -> 该认作同一实体的表述）。已知领域家族种子，
+# 后面靠评测 / 人工审计往里加。**这是最安全、最可控的一路。**
+ALIAS_MAP = {
+    "集群五大系统": ["五大系统", "五个系统", "那批系统", "那五个系统",
+                      "医院集群五大系统", "某集群五大系统"],
+}
+
+
+def candidate_aliases(ent_df, ent_ty=None, min_df=5, min_len=4):
+    """后缀归一候选对（保守，零依赖）。返回 [(canonical, variant), ...]。
+
+    A == B + 通用后缀，且 B 长度≥min_len、B 的 df≥min_df、B 是实词
+    → 候选 (A, B)。例：「智能血液透析系统」↔「智能血液透析」。
+    不做反向（不会把「血透」并入「血透系统」），避免低频碎片吞掉完整概念。
+    只认 noun/dict/title 类，词性未知的也放行（防止漏掉领域词），
+    但**绝不**合并停用词 / 虚词（那些在 build_graph 里已被度/df 比值剔除）。
+    """
+    if ent_ty is None:
+        ent_ty = {}
+    out = []
+    for a in ent_df:
+        for suf in _GENERIC_SUFFIX:
+            if a.endswith(suf) and len(a) - len(suf) >= min_len:
+                b = a[: len(a) - len(suf)]
+                if b in ent_df and ent_df[b] >= min_df:
+                    if ent_ty.get(b) in (None, "noun", "dict", "title", "quote", "code"):
+                        out.append((a, b))
+    return out
+
+
+def alias_pairs(graph_or_stats, alias_map=None, min_df=5, min_len=4, ent_ty=None):
+    """生成同义词边候选对（不依赖 networkx，可被单测）。
+
+    graph_or_stats: networkx 图 或 {实体: df} 字典。
+    返回 [(canonical, variant, source), ...]，source ∈ {alias_map, suffix}。
+    保守：显式表优先；后缀归一仅当两端实体都真实存在于实体集合里。
+    """
+    alias_map = alias_map or ALIAS_MAP
+    if hasattr(graph_or_stats, "nodes"):
+        ent_df = {n: graph_or_stats.nodes[n].get("df", 1)
+                  for n in graph_or_stats.nodes}
+        ent_ty = {n: graph_or_stats.nodes[n].get("type") for n in graph_or_stats.nodes}
+    else:
+        ent_df = dict(graph_or_stats)
+        ent_ty = ent_ty or {}
+    pairs = []
+    names = set(ent_df)
+    for canon, variants in alias_map.items():
+        if canon not in names:
+            continue
+        for v in variants:
+            if v in names and v != canon:
+                pairs.append((canon, v, "alias_map"))
+    for a, b in candidate_aliases(ent_df, ent_ty, min_df=min_df, min_len=min_len):
+        if a in names and b in names:
+            pairs.append((a, b, "suffix"))
+    return pairs
+
+
+def add_synonym_edges(graph, alias_map=None, min_df=5, min_len=4,
+                      weight=1.0, suffix_merge=True):
+    """给图加同义词边（HippoRAG 2 同义边的本地版）。**原地修改** graph，返回合并清单。
+
+    权重默认 1.0（与共现 NPMI 同量级，不强压结构）；已存在共现边则提权并打 synonym 标记。
+    synonym=True 才生效，绝不默认开。
+    """
+    pairs = alias_pairs(graph, alias_map=alias_map, min_df=min_df,
+                        min_len=min_len)
+    added = []
+    for a, b, src in pairs:
+        if a == b or not (graph.has_node(a) and graph.has_node(b)):
+            continue
+        if graph.has_edge(a, b):
+            graph[a][b]["w"] = max(graph[a][b]["w"], weight)
+            graph[a][b]["synonym"] = 1
+        elif suffix_merge or src == "alias_map":
+            graph.add_edge(a, b, w=weight, synonym=1)
+            added.append((a, b, src))
+        else:
+            continue
+    return added
 
 
 if __name__ == "__main__":

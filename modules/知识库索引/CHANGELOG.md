@@ -2,6 +2,26 @@
 
 所有重要变更都记录在这里。
 
+## [WIP] - 2026-11-04（未发布 · 实验性 · 需沙盒集成测试 + 审批）
+
+> 本轮只动仓库侧，生产侧零触碰。实体链接默认关闭，不影响任何既有评测口径。
+> 不 bump 版本、不发布，等库拥有者在沙盒验过 + 拍板 P3 关系抽取预算后再定 release。
+
+### 一、图谱实体链接 / 同义词边（对应 KG-41 §九，路线图 P1）
+
+- `kg_ppr.py` 新增 `candidate_aliases()`（保守后缀归一）+ `alias_pairs()` /
+  `add_synonym_edges()`（HippoRAG 2 同义词边本地零 LLM 版）+ `ALIAS_MAP` 显式别名表。
+- `build_graph(..., synonym=True)` 显式打开才加同义词边，计入 `stats["synonym_edges"]`。
+- `_test_kg_alias.py` 零依赖单测 9/9 通过。
+- 动机：补全「关系抽取前置」，让「集群五大系统 / 五大系统 / 那批系统」等表述在图上连通。
+- ⚠️ 带 networkx 的并边 + PPR 集成需项目真环境沙盒验证（本机便携 Python 缺 networkx/numpy/jieba）。
+
+### 二、主流对比交付物
+
+- 新增 `wiki/技术/知识图谱对比主流GraphRAG-缺口与路线图.md`：
+  对比 Microsoft GraphRAG / LightRAG / HippoRAG 2 / KAG / LazyGraphRAG，结论
+  「我们的系统 = 零 LLM 版 HippoRAG，缺有类型关系边与同义词边；成本是独特优势」。
+
 ## [v1.16.0] - 2026-11-04
 
 > 本版三件事：**清理被污染的评测数据 / 补齐两侧代码分叉 / 把图谱实验归档成可复用的资产**。

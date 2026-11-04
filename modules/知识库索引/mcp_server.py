@@ -151,6 +151,27 @@ def _fmt_result(it):
             % (score_s, title, path, snippet))
 
 
+def _note_text(notes):
+    """把 search_unified 的 note 统一成一段字符串。
+
+    🔴 2026-11-04 真跑才暴露的 bug：`kb_rag.search_unified()` 返回的第二项是
+    **已经用 "; " 拼好的 str**（`return out, "; ".join(notes)`），而本文件原来写
+    `"；".join(notes)` —— 对 str 做 join 会**逐字符**拼接，输出成
+    「v；e；c； ；路；由」这种乱码。协议层单测（_test_mcp_server.py）注入的是假
+    searcher、只验握手与报错，从未走过真 searcher，所以这条一直没被发现。
+
+    这里兼容三种形态：None / str / list，避免以后再被返回值类型变化咬一次。
+    """
+    if not notes:
+        return ""
+    if isinstance(notes, str):
+        return notes
+    try:
+        return "；".join(str(x) for x in notes)
+    except TypeError:
+        return str(notes)
+
+
 def h_kb_search(ctx, args):
     query = (args.get("query") or "").strip()
     if not query:
@@ -159,9 +180,10 @@ def h_kb_search(ctx, args):
     mode = args.get("mode") or "fused"
     use_rerank = bool(args.get("use_rerank", True))
     res, notes = ctx.search(query, topk=topk, mode=mode, use_rerank=use_rerank)
+    note_txt = _note_text(notes)      # 🔴 2026-11-04 修：notes 是 str，不能直接 join
     if not res:
         return [{"type": "text",
-                 "text": "未检索到相关内容。%s" % ("；".join(notes) if notes else "")}]
+                 "text": "未检索到相关内容。%s" % note_txt}]
     lines = ["命中 %d 条（mode=%s）：" % (len(res), mode)]
     for it in res:
         # 片段兜底：结果自带 content/text/summary 优先，否则查文档摘要
@@ -170,8 +192,8 @@ def h_kb_search(ctx, args):
             enriched["summary"] = ctx.snippet_for(it.get("path") or "")
             it = enriched
         lines.append(_fmt_result(it))
-    if notes:
-        lines.append("\n备注: " + "；".join(notes))
+    if note_txt:
+        lines.append("\n备注: " + note_txt)
     return [{"type": "text", "text": "\n".join(lines)}]
 
 
