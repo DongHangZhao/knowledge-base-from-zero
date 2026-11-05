@@ -1385,17 +1385,44 @@ def cmd_stats(args):
 
 def cmd_doctor(args):
     conn = kb_index.connect(readonly=True)
+    _env_err = []
 
-    def g(sql):
+    def g(sql, label=""):
+        """取值。区分两类 OperationalError（2026-11-04 生产侧修，2026-11-06 回流仓库）：
+
+        · `no such table` / `no such column` → **真的没有**（没跑过 build），返回 0。
+        · 其余（`database is locked` / `unable to open database file` / `disk I/O error`）
+          → **环境瞬时态**。以前一律 return 0，会把「这一刻读不到」伪装成「覆盖率 0%」，
+          看着像索引坏了，实际是 WAL 竞争 —— 误报比不报更糟，所以记下来显式爆出。
+        """
         try:
             return conn.execute(sql).fetchone()[0]
-        except sqlite3.OperationalError:
-            return 0  # 表不存在 = 覆盖率为 0，doctor 会判 🔴
-    # 🔴 #37（2026-11-03）：checks 改由 `vec_tables.diff_report` 驱动 —— 与 build
+        except sqlite3.OperationalError as e:
+            msg = str(e).lower()
+            if "no such table" in msg or "no such column" in msg:
+                return 0
+            _env_err.append("%s：%s" % (label or sql.strip()[:40], e))
+            return None
+
+    # 🔴 #37（2026-11-03）：覆盖检查改由 `vec_tables.diff_report` 驱动 —— 与 build
     #    补写**同一口径**（同一个 missing_ids SQL）。以前两处各写一套行数比较，
     #    结果是「孤儿行（chunk 已删、向量还在）让行数看着齐，实际仍有 chunk 没向量」。
     #    现在报的是「真实覆盖 = chunks - 缺 id 数」。
-    rep = vec_tables.diff_report(conn)
+    # 🔴 2026-11-06 合并：diff_report 本身也可能抛 OperationalError —— 不能让
+    #    database is locked 这类瞬时态伪装成「覆盖率 0%」，显式分类后停下（rc=3）。
+    print("== doctor ==")
+    try:
+        rep = vec_tables.diff_report(conn)
+    except sqlite3.OperationalError as e:
+        msg = str(e).lower()
+        if "no such table" in msg or "no such column" in msg:
+            print("🔴 索引表未建（没跑过 build），无法给覆盖率 —— 先跑 kb_rag.py build")
+        else:
+            print("🔴 数据库读取异常 —— 不输出覆盖率（避免把「读不到」误报成「覆盖率 0%」）：")
+            print("   · %s" % e)
+            print("   → 多数是 WAL 竞争瞬时态，重跑一次；持续出现查 build 进程是否占锁 / 库文件权限")
+        conn.close()
+        sys.exit(3)
     cnt = rep["counts"]
     chunks = max(0, cnt["chunks"])
     cover = {
@@ -1405,7 +1432,6 @@ def cmd_doctor(args):
     }
     m3_mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
 
-    print("== doctor ==")
     ok = True
 
     def line(mark, name, have, want, note=""):
@@ -1441,11 +1467,15 @@ def cmd_doctor(args):
     if top_gap:
         print("⚠️ 无正文可提取（已知缺口）：" +
               ", ".join("%s×%d" % (k, v["files"]) for k, v in top_gap))
-    qlog = g("SELECT COUNT(*) FROM query_log")
-    empty = g("SELECT COUNT(*) FROM query_log WHERE n_results=0")
+    qlog = g("SELECT COUNT(*) FROM query_log", "query_log 表")
+    empty = g("SELECT COUNT(*) FROM query_log WHERE n_results=0", "零命中")
+    if _env_err:
+        print("⚠️ 数据库读取异常 %d 处（日志类指标可能不准，不影响覆盖率结论）：" % len(_env_err))
+        for e in _env_err:
+            print("   · %s" % e)
     if qlog:
         print("查询日志 %d 条，零命中 %d（%.0f%%）——零命中高说明该补料了" %
-              (qlog, empty, empty / qlog * 100))
+              (qlog, empty or 0, (empty or 0) / qlog * 100))
     print(PRIVACY_NOTE)
     conn.close()
     sys.exit(0 if ok else 3)

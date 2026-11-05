@@ -2,6 +2,32 @@
 
 所有重要变更都记录在这里。
 
+## [WIP] - 2026-11-06（双库收敛收尾 · 非 release，故不 bump VERSION）
+
+> 决策理由：本轮是「生产库 ↔ 开源仓库」的能力收敛补代码，不是功能发版；VERSION 保持不变，
+> 避免把同步提交伪装成 release。库拥有者 2026-11-06 要求「一晚上做完、明早八点验收」，
+> 因此把遗留 6 组差异全部合并并逐项真跑，而不是停在「有清单」。
+
+### 一、6 组差异双向对齐（判据：通用能力收敛 / 隐私与环境定制显式保留）
+
+- `faithfulness_judge.py`：回流校准状态门禁（未校准禁用于上线 / 回滚 / 判好坏），两侧字节一致。
+- `ingest_raw.py`：回流 `.xls` 读取能力与通用黑名单框架；生产侧真实业务词表不进开源版，改为中性示例词。
+- `kb_index.py`：回流第 7 列 `name_exclude` 机制与「默认全收、只排流水」口径；`--raw-root` 去硬编码；`INDEX_TARGETS` 条目值属各库目录配置，不收敛。
+- `kb_rag.py` `cmd_doctor`：以 `vec_tables.diff_report` 为唯一口径 + 生产侧 `OperationalError` 分类防误报，两侧函数字节一致。
+- `vector_backfill.py`：生产侧向 `vec_tables` 统一口径对齐，模型目录改 `KB_M3_MODEL_DIR` env 优先；本机路径不回流。
+- `weekly_selfcheck.py`：双向合并「四表一致性」与「版本化主集门禁」（新增 `eval_gate.py`）；缺尺子时明确 SKIP，不假装 PASS。
+
+### 二、真跑才暴露的三个问题（已修）
+
+- `read_xls` 两侧均缺 `xlrd`：`except Exception: return ""` 静默吞掉 ImportError，能力从未生效 → 两侧补 `requirements-extra.txt` 声明，造 600 行 .xls 真读出 5786 字符。
+- 仓库侧 `weekly_selfcheck` 无历史基线分支未设 `status`，但 payload 引用它 → 首次跑必 `NameError`；补 `status = "BASELINE"`（没有对照就没有「通过」）。
+- 一次性合并脚本 `.github` 锚点重复插入 / 函数尾部空行累积 → 加幂等守卫，三次复跑 `[skip] 已就位`。
+
+### 三、验收边界（诚实标注，不粉饰）
+
+- 全量 `run_tests.py --ci` 为 16/17、307/309，2 条 FAIL 来自并行窗口对 `--category` 过滤行为的在途改动，与本次合并无关（合并前备份跑同一套件全过）；未越界回滚或改他人代码。
+- 发布前 `privacy_scan.py --git-only` 干净；`diff_repo_prod.py` 巡检结果「仓库独有 0」。
+
 ## [WIP] - 2026-11-04（未发布 · 实验性 · 需沙盒集成测试 + 审批）
 
 > 本轮只动仓库侧，生产侧零触碰。实体链接默认关闭，不影响任何既有评测口径。

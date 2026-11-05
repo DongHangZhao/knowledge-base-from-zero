@@ -11,6 +11,7 @@ weekly_selfcheck — 知识库每周自测（每周一 09:00 自动跑）
   [3/6] 检索质量   —— 30/100 评测集跑四方式 Recall@5 + MRR
   [4/6] 幻觉风险   —— 空检率（检索为空却硬答）、失效内链、index.md 幽灵条目
   [5/6] 回归门禁   —— 与上周基线对比，掉点超过阈值就 FAIL（exit 1），不是只记不看
+  [5.5/6] 主集门禁 —— 调 eval_gate.py 跑版本化评测集（eval_sets/），rc 非 0 一并拦；缺尺子明确 SKIP
   [6/6] 自动优化   —— ANALYZE + FTS5 optimize + checkpoint，让库越跑越健康而不是越跑越烂
 
 产出：
@@ -516,6 +517,38 @@ def cmd_run(args):
         print("        结论：%s %s" % (status, ("｜" + "；".join(gate_msgs)) if gate_msgs else ""))
     else:
         print("\n[5/6] 无历史基线，本次作为首版基线（下次起做对比）")
+        status = "BASELINE"   # 🔴 不假装 PASS：没有对照就没有「通过」这回事
+
+    # ---- [5.5] 版本化主集门禁（W3 2026-11-04；2026-11-06 双向合并）----
+    # 为什么单独调：本脚本跑的 30/100 是旧饱和集，只考「查表」，判不了
+    # 「改索引 / 切块 / RRF 权重后到底有没有变好」。新门禁读版本化主集
+    # eval_sets/manifest.json，R@5 掉 >2pp 或缺桶就 rc 非 0。
+    # 🔴 eval_gate 自己用 readonly 连接，不会污染 query_log。
+    # 🔴 缺工具/缺主集时**明确 SKIP**：不假装 PASS，也不把「没尺子」误判成 FAIL。
+    #    调用失败只告警、不改 status：工具挂了不该让周自测永久红（verify_day 教训）。
+    gate_rc, gate_err = None, ""
+    _gate_script = os.path.join(KB_IDX, "eval_gate.py")
+    _manifest = os.path.join(KB_IDX, "eval_sets", "manifest.json")
+    if not (os.path.isfile(_gate_script) and os.path.isfile(_manifest)):
+        print("\n[5.5/6] 版本化主集门禁：⏳ SKIP（缺 eval_gate.py / eval_sets/manifest.json）")
+    else:
+        try:
+            import subprocess
+            _r = subprocess.run(
+                [sys.executable, _gate_script],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=900)
+            gate_rc = _r.returncode
+            print("\n[5.5/6] 版本化主集门禁：rc=%d" % gate_rc)
+            for _ln in (_r.stdout or "").strip().splitlines():
+                if _ln.startswith(("R@5", "分桶", "判定", "query_log")):
+                    print("        " + _ln)
+            if gate_rc:
+                gate_msgs.append("eval_gate rc=%d（见 eval_sets/gate_latest.json）" % gate_rc)
+                status = "FAIL"
+        except Exception as e:
+            gate_err = str(e)[:120]
+            print("        ⚠ eval_gate 调用失败（不改结论，仅告警）：%s" % gate_err)
 
     print("\n[6/6] 自动优化：")
     for s in auto_optimize(conn_kb):
@@ -527,6 +560,7 @@ def cmd_run(args):
                "empty_rate": empty_rate, "empty_queries": empty_qs,
                "dead_links": dead, "ghost_entries": ghosts,
                "status": status, "gate_messages": gate_msgs,
+               "eval_gate_rc": gate_rc, "eval_gate_error": gate_err,
                "baseline_prev": {"fts": prev[0] if prev else None,
                                  "hybrid_w2": prev[1] if prev else None,
                                  "week": "上一版"}}

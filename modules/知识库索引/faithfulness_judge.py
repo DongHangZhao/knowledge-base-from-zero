@@ -13,7 +13,7 @@ faithfulness_judge — 真·答案忠实度评测（LLM-as-judge）
   import  → 导入 judge 的评分与理由（judge 可以是人，也可以是 LLM）
   report  → 出报告；并把 judge 分与弱代理分做**相关性对照**
 
-🔴 诚实地写明局限：本轮 judge = AI 助手本人，而答案也是AI 助手写的 —— **自评偏差**必然存在。
+🔴 诚实地写明局限：本轮 judge = AI 助手本人，而答案也是 AI 助手写的 —— **自评偏差**必然存在。
    缓解办法：判定时只读「上下文 + 答案」，不回想写答案时的想法；每条必须写出
    「哪句话无依据」，让理由可复核。真正的独立 judge 需要换一个模型（P1）。
 
@@ -98,6 +98,23 @@ def cmd_report(args):
         print("还没有判定结果，先跑 import")
         return 1
     judged = json.load(open(JUDGED, encoding="utf-8"))
+
+    # ---- W3-D 准入护栏（2026-11-04）：judge 未校准，分数不得用于决策 ----
+    # 只加提示，不动任何评分逻辑；状态由 judge_calibration.py 独立维护。
+    calib_path = os.path.join(HERE, "state", "judge_calibration", "status.json")
+    calib = "UNCALIBRATED"
+    if os.path.isfile(calib_path):
+        try:
+            with open(calib_path, encoding="utf-8") as cf:
+                calib = json.load(cf).get("verdict", "UNCALIBRATED")
+        except (OSError, json.JSONDecodeError):
+            calib = "UNCALIBRATED"
+    calib_note = ("judge 已校准（CALIBRATED），分数可用于生成侧决策"
+                  if calib == "CALIBRATED" else
+                  "🔴 judge 未校准（%s）：下列分数仅供趋势观察，不得用于上线 / 回滚 / 判好坏。"
+                  "先跑 judge_calibration.py status，rc=0 才可用" % calib)
+    print("\n【校准状态】%s\n" % calib_note)
+
     import answer_eval as ae
     samples = {s["query"]: s for s in json.load(open(ae.SAMPLES, encoding="utf-8"))}
     _, rows = ae.evaluate([s for s in samples.values() if s.get("answer", "").strip()])
@@ -135,6 +152,7 @@ def cmd_report(args):
             "全是高分样本，没有对照组" if not lo else "全是低分样本"))
 
     lines = ["# 真·faithfulness 评测报告（LLM-as-judge）", "",
+             "> **校准状态**：%s" % calib_note, "",
              "> 生成时间：%s ｜ 样本 %d 条 ｜ judge：%s" % (
                  datetime.now().isoformat(timespec="seconds"), n,
                  judged[0].get("judge", "—")), "",

@@ -74,8 +74,15 @@ INDEX_TARGETS = [
     # **刻意排除**：CHANGELOG.md / HANDOFF.md（时间快照与流水，改一次就变一次，
     # 进索引等于制造旧版重复 + 稀释排序）、bug记录/ 下 21 篇单 bug 台账（由
     # INDEX.md 总表代表）、rea/ 第三方开源项目自带治理文件。
+    # 🔴 2026-11-04 生产侧实证后回流：从「白名单 5 类名字」改为「黑名单只排流水」。
+    # 白名单把「立项-*.md」「参考工具调研.md」「SECURITY/CONTRIBUTING/DISCLAIMER」
+    # 这类正文全漏在索引外（搜不到 → 误判「库里没有」）。modules 一层 118 篇里
+    # 49 篇是 CHANGELOG/HANDOFF 流水，其余都是正文 ⇒ **漏的代价 > 收错的代价**：
+    #   目录里「大部分该收、少数是流水」→ 用黑名单（默认收全，排掉流水）；
+    #   目录里「大部分是垃圾、只有少数是正文」→ 用白名单（收错代价大）。
+    # 第 7 列 name_exclude 与第 5/6 列的白名单/子目录白名单互不冲突。
     ("modules", os.path.join(KB_ROOT, "modules"), "*/*.md", False,
-     {"README.md", "AGENT.md", "INDEX.md", "ROADMAP.md", "AUTOMATION_PROMPT.md"}),
+     None, None, {"CHANGELOG.md", "HANDOFF.md"}),
     # modules 二层子项目（2026-10-23 作者拍板纳入）。为什么用「子目录白名单」
     # 而不是通配：二层 glob `*/*/*.md` 全开会命中 157 篇，其中 rea/docs/ 58 篇
     # 是第三方开源项目自带文档、知识沉淀/reports/ 50+ 篇是 sediment 流水快照、
@@ -88,6 +95,9 @@ INDEX_TARGETS = [
      {"示例同事面试项目"}),
     ("root", KB_ROOT, "SKILL.md", False),
     ("root", KB_ROOT, "index.md", False),
+    # GitHub 生态配置说明（workflows / CONTRIBUTING / issue 模板）：开源仓库自带。
+    # 内容很短但搜不到就等于「新工具不知道规则在哪」，与生产侧 .github 条目同口径。
+    (".github", os.path.join(KB_ROOT, ".github"), "*.md", False),
     # 技能区：SKILL.md 是「这个能力存在、怎么用」的唯一说明。不索引会导致
     # **能力封装成技能后反而检索不到**——2026-10-23 实证：video-channels-capture
     # 明明在 .workbuddy/skills/ 里，kb_rag 搜「视频号 下载」却搜不出它，
@@ -618,7 +628,7 @@ def read_md_meta(path):
 def scan_files():
     """按 INDEX_TARGETS 扫描待索引文件，返回 [{category, path, title, summary, content, hash}]
 
-    INDEX_TARGETS 每项 = (分类, 目录, glob 模式, recursive[, 文件名白名单[, 子目录白名单]])。
+    INDEX_TARGETS 每项 = (分类, 目录, glob 模式, recursive[, 文件名白名单[, 子目录白名单[, 文件名黑名单]]])。
     第 5 列可选：只有文件名在该白名单里的文件才收录 —— 用来在「同目录一堆 md」
     的场景里精准挑说明书，排除 CHANGELOG/HANDOFF 这类时间快照与流水
     （改了就读旧版、且会稀释排序）。
@@ -634,11 +644,14 @@ def scan_files():
         category, base, pattern, recursive = target[:4]
         name_filter = target[4] if len(target) > 4 else None
         dir_filter = target[5] if len(target) > 5 else None
+        name_exclude = target[6] if len(target) > 6 else None
         pat = os.path.join(base, "**", pattern) if recursive else os.path.join(base, pattern)
         for fp in globmod.glob(pat, recursive=recursive):
             if not os.path.isfile(fp):
                 continue
             if name_filter and os.path.basename(fp) not in name_filter:
+                continue
+            if name_exclude and os.path.basename(fp) in name_exclude:
                 continue
             if dir_filter:
                 # dir_filter 匹配的是「base 下的**直接子目录**」，

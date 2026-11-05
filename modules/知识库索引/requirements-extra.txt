@@ -2,6 +2,7 @@
 # 仅在使用 ingest_raw.py 导入这些格式时需要；核心检索只依赖 requirements.txt。
 python-docx>=1.1
 openpyxl>=3.1
+xlrd>=2.0        # 读 .xls（Excel 97-2003）；缺了 read_xls 会静默返回空
 pdfplumber>=0.11
 pypdf>=4.0
 beautifulsoup4>=4.12

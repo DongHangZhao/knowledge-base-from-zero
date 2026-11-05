@@ -54,7 +54,7 @@ PRIVACY_NOTE = "🔴 索引库含 raw/隐私/ 与 raw/个人信息/ 正文：本
 # 扩展名 → 提取器；不在表里的（jpg/mp4/zip…）记 gap 跳过
 TEXT_EXTS = {".md", ".txt", ".json", ".py", ".csv", ".log", ".yaml", ".yml", ".ini", ".xml"}
 HTML_EXTS = {".html", ".htm"}
-OFFICE_EXTS = {".docx", ".doc", ".xlsx", ".pptx"}   # .doc 走 Word COM（2026-10-28 加）
+OFFICE_EXTS = {".docx", ".doc", ".xlsx", ".pptx", ".xls"}   # .doc 走 Word COM（2026-10-28 加）
 PDF_EXTS = {".pdf"}
 
 
@@ -732,6 +732,56 @@ def read_pptx(fp):
         return ""
 
 
+# ---------- .xls（Excel 97-2003）与隐私双黑名单（2026-11-04 生产回流，示例配置）----------
+# 为什么开 .xls 要配门禁：老格式表格常是名单 / 成绩 / 工号一类业务原始数据，
+# 直接加进 OFFICE_EXTS 等于把隐私数据灌进检索库（撞隐私红线）。
+# 两道门：① 路径前缀（隐私目录整目录挡）② 文件名关键词。
+# 再加检索侧出口门禁（命中隐私路径只返路径不返正文），共三道防线。
+# 🔴 下面是**示例词表**，按自己库的隐私词表补齐（词表不入库，与 privacy_scan.py 同思路）。
+#    漏一个 = 敏感名单进检索上下文。宁可误挡，不可漏挡。
+XLS_DENY_PATH_PREFIXES = kb_index.PRIVACY_PATH_PREFIXES
+XLS_DENY_NAME_KEYWORDS = (
+    "名单", "名册", "通讯录", "工资表", "身份证", "成绩", "病历",
+)
+
+
+def xls_denied(rel_path):
+    """.xls 是否被隐私门禁拒绝。返回拒绝理由（空字符串 = 允许摄取）。
+
+    只对 .xls 生效：其它格式不进这个门，避免影响既有行为。
+    """
+    p = (rel_path or "").replace("\\", "/")
+    for pre in XLS_DENY_PATH_PREFIXES:
+        if p.startswith(pre):
+            return "路径在隐私/业务目录（%s）" % pre
+    name = p.rsplit("/", 1)[-1]
+    for kw in XLS_DENY_NAME_KEYWORDS:
+        if kw in name:
+            return "文件名含「%s」" % kw
+    return ""
+
+
+def read_xls(fp):
+    """读 .xls（Excel 97-2003）。xlrd>=2.0 只支持 .xls，正好对口。
+
+    与 read_xlsx 同口径：每表最多 500 行、Tab 分隔、截断 MAX_TEXT。
+    🔴 本函数只管「技术上读得出来」，能不能读由 `xls_denied()` 在扫描层决定。
+      500 行截断是第二道保险：即便门禁漏网，也不会把超长表格整表灌进库。
+    """
+    try:
+        import xlrd
+        book = xlrd.open_workbook(fp, on_demand=True)
+        parts = []
+        for sh in book.sheets():
+            parts.append("## %s" % sh.name)
+            for i in range(min(sh.nrows, 500)):
+                vals = [str(v) for v in sh.row_values(i) if v not in (None, "")]
+                if vals:
+                    parts.append("\t".join(vals))
+        book.release_resources()
+        return "\n".join(parts)[:MAX_TEXT]
+    except Exception:
+        return ""
 EXTRACTORS = {}
 for _e in TEXT_EXTS:
     EXTRACTORS[_e] = read_plain
@@ -739,7 +789,7 @@ for _e in HTML_EXTS:
     EXTRACTORS[_e] = read_html
 for _e in OFFICE_EXTS:
     EXTRACTORS[_e] = {".docx": read_docx, ".doc": read_doc,
-                        ".xlsx": read_xlsx, ".pptx": read_pptx}[_e]
+                        ".xlsx": read_xlsx, ".pptx": read_pptx, ".xls": read_xls}[_e]
 for _e in PDF_EXTS:
     # scan_raw 用「ext in EXTRACTORS」判可提取，.pdf 必须留在表里；但 ingest_one
     # 对 .pdf 特调 read_pdf_guarded（子进程超时隔离），不经过本映射——这里挂
@@ -792,6 +842,16 @@ def scan_raw():
                     rel = os.path.relpath(e.path, kb_index.KB_ROOT).replace("\\", "/")
                     item = {"rel": rel, "ext": ext, "size": st.st_size,
                             "mtime": datetime.datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds")}
+                    if ext == ".xls":
+                        # 隐私门禁在**扫描层**拦，不是提取后拦：拦在这里等于这些文件
+                        # 根本不进 todo 队列，不会有半截正文写进 chunks 的风险。
+                        deny = xls_denied(rel)
+                        if deny:
+                            g = gaps.setdefault(
+                                ".xls·隐私拒绝",
+                                {"files": 0, "reason": "双黑名单拒绝（路径前缀/文件名关键词），不摄取正文"})
+                            g["files"] += 1
+                            continue
                     if ext in EXTRACTORS:
                         items.append(item)
                     else:
