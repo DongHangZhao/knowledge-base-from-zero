@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.17.0** (standalone knowledge-graph subsystem added; retrieval engine v1.16.0; hub and docs v1.4.0)
+Current version: **v1.17.1** (knowledge-graph subsystem v1.0.1: release-gate wording fix; retrieval engine v1.16.0; hub and docs v1.4.0)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 

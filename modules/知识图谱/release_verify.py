@@ -523,10 +523,13 @@ def main(argv=None):
         "",
         "## 总体判定",
         "",
-        "**`%s`**%s" % (overall, "（BLOCKED：" + ", ".join(blocked) + "）" if blocked else
-                     (" — 技术闸门全过（含 C7 LLM 能力层已建成并默认 off）；剩 %d 项红线需库主书面许可 + %d 项运行开关待定，见下表。"
-                      % (sum(1 for d in decisions if "运行开关" not in d["tier"]),
-                         sum(1 for d in decisions if "运行开关" in d["tier"])))),
+        "**`%s`**%s" % (
+            overall,
+            "（BLOCKED：" + ", ".join(blocked) + "）" if blocked else
+            (" — 技术闸门全过（含 C7 LLM 能力层已建成并默认 off）；"
+             "D1 沙盒删除 / D3 发版 / D4 常驻开关均已执行，剩 %d 项仍待库主拍板，见下表。"
+             % sum(1 for d in decisions
+                   if "已执行" not in d["tier"] and "已授权" not in d["tier"]))),
         "",
         "## 技术闸门（脚本判定）",
         "",
@@ -536,7 +539,7 @@ def main(argv=None):
     for c in checks:
         lines.append("| %s | **%s** | %s | %s |" %
                      (c["id"], c["status"], c["statement"], c["criterion"]))
-    lines += ["", "## 待拍板（AI 不动手）", "",
+    lines += ["", "## 决策项（已执行的回填事实 / 未执行的仍归库主）", "",
               "| ID | 档位 | 需要什么 | 一键命令 |", "|---|---|---|---|"]
     for d in decisions:
         lines.append("| %s | %s | %s | `%s` |" %

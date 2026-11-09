@@ -1,7 +1,7 @@
 {
   "schema": "w6-release-attestation/v1",
   "inspired_by": "SLSA L1 provenance + golden-set calibration + secret-scan baseline gate (判据借用，实现为本地纯标准库；无签名、无云端、无外部服务)",
-  "verified_at": "2026-11-09 14:38:24",
+  "verified_at": "2026-11-09 16:46:26",
   "overall": "PASS_WITH_WAIVERS",
   "blocked_checks": [],
   "provenance": {
@@ -43,7 +43,7 @@
         "kg_ppr.py": "6ac7acce89ca",
         "kg_search.py": "f775429fd8cf",
         "kg_terms.py": "a09e52311ed8",
-        "release_verify.py": "8c257aea4dc8",
+        "release_verify.py": "eecf637f94ac",
         "viz_export.py": "9f0da7febc1a"
       },
       "originals_history_baseline_2026_11_06": {
