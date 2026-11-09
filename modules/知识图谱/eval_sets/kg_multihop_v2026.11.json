@@ -1,0 +1,4270 @@
+{
+ "version": "2026.11",
+ "items": [
+  {
+   "qid": "W6MH-001",
+   "question": "「FAIL」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "README",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      525
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "FAIL",
+      "KB_W_KG",
+      "扩展结果排序不够靠前"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      179
+     ],
+     "chunk_idx": [
+      25
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-002",
+   "question": "哪两篇文档分别讨论了「BGE」和「AI」？",
+   "bridge_entity": "FTS5",
+   "gt": [
+    {
+     "path": "incremental/增量验证-示例.md",
+     "chunk_ids": [
+      566
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "BGE",
+      "PPR",
+      "RRF"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      157,
+      158,
+      187,
+      188,
+      192,
+      194
+     ],
+     "chunk_idx": [
+      3,
+      4,
+      33,
+      34,
+      38,
+      40
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "incremental/增量验证-示例.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-003",
+   "question": "跨文档看，「FAIL」和「CUDA」的论述各落在哪一篇？",
+   "bridge_entity": "rag",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      535,
+      551,
+      552
+     ],
+     "chunk_idx": [
+      10,
+      26,
+      27
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/decisions/RW-39.md",
+     "chunk_ids": [
+      557,
+      561,
+      562,
+      563
+     ],
+     "chunk_idx": [
+      2,
+      6,
+      7,
+      8
+     ],
+     "co_entities": [
+      "CUDA",
+      "Ground",
+      "Truth"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/decisions/RW-39.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-004",
+   "question": "「BGE」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "RRF",
+   "gt": [
+    {
+     "path": "incremental/增量验证-示例.md",
+     "chunk_ids": [
+      566
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "BGE",
+      "FTS5",
+      "PPR"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      158,
+      172,
+      173,
+      195
+     ],
+     "chunk_idx": [
+      4,
+      18,
+      19,
+      41
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "incremental/增量验证-示例.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-005",
+   "question": "哪两篇文档分别讨论了「AI」和「English」？",
+   "bridge_entity": "Raw",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      166
+     ],
+     "chunk_idx": [
+      12
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/双链路体系.md",
+     "chunk_ids": [
+      410
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "AI",
+      "English",
+      "PDF"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/双链路体系.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-006",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "The",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150,
+      152
+     ],
+     "chunk_idx": [
+      5,
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      154,
+      155,
+      161,
+      179,
+      185,
+      191,
+      192,
+      199,
+      202
+     ],
+     "chunk_idx": [
+      0,
+      1,
+      7,
+      25,
+      31,
+      37,
+      38,
+      45,
+      48
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-007",
+   "question": "「AGENTS.md」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "AGENTS",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      142,
+      143,
+      144
+     ],
+     "chunk_idx": [
+      0,
+      1,
+      2
+     ],
+     "co_entities": [
+      "AGENTS.md",
+      "AI",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/architecture.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-008",
+   "question": "哪两篇文档分别讨论了「FTS5」和「AI」？",
+   "bridge_entity": "BGE",
+   "gt": [
+    {
+     "path": "incremental/增量验证-示例.md",
+     "chunk_ids": [
+      566
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "FTS5",
+      "PPR",
+      "RRF"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      186,
+      188
+     ],
+     "chunk_idx": [
+      32,
+      34
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "incremental/增量验证-示例.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-009",
+   "question": "跨文档看，「FAIL」和「Bottom」的论述各落在哪一篇？",
+   "bridge_entity": "GitHub",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      550
+     ],
+     "chunk_idx": [
+      25
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      222,
+      223,
+      233,
+      243,
+      250,
+      251
+     ],
+     "chunk_idx": [
+      3,
+      4,
+      14,
+      24,
+      31,
+      32
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-010",
+   "question": "「AGENTS」与「FAIL」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Python",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      143
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      553
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/decisions/KG-41.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-011",
+   "question": "哪两篇文档分别讨论了「AI」和「Add」？",
+   "bridge_entity": "This",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      154,
+      166,
+      194,
+      199
+     ],
+     "chunk_idx": [
+      0,
+      12,
+      40,
+      45
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      210,
+      216
+     ],
+     "chunk_idx": [
+      0,
+      6
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-012",
+   "question": "跨文档看，「AGENTS」和「AI」的论述各落在哪一篇？",
+   "bridge_entity": "build",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      144
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150,
+      152
+     ],
+     "chunk_idx": [
+      5,
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/architecture.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-013",
+   "question": "「BGE」与「AGENTS」分别在哪两篇文档里被论述？",
+   "bridge_entity": "提示词",
+   "gt": [
+    {
+     "path": "incremental/增量验证-示例.md",
+     "chunk_ids": [
+      566
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "BGE",
+      "FTS5",
+      "PPR"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      143
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "incremental/增量验证-示例.md",
+    "kb-from-zero/docs/FAQ.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-014",
+   "question": "哪两篇文档分别讨论了「API」和「English」？",
+   "bridge_entity": "CPU",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      277,
+      278,
+      305
+     ],
+     "chunk_idx": [
+      22,
+      23,
+      50
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      500,
+      501,
+      515
+     ],
+     "chunk_idx": [
+      13,
+      14,
+      28
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-015",
+   "question": "跨文档看，「AI」和「AGENTS」的论述各落在哪一篇？",
+   "bridge_entity": "Chinese",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      185
+     ],
+     "chunk_idx": [
+      31
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      209
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-016",
+   "question": "「AI」与「Add」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Every",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      145
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      166,
+      174,
+      193
+     ],
+     "chunk_idx": [
+      12,
+      20,
+      39
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-017",
+   "question": "哪两篇文档分别讨论了「AI」和「AGENTS」？",
+   "bridge_entity": "How",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      200
+     ],
+     "chunk_idx": [
+      46
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      203,
+      204
+     ],
+     "chunk_idx": [
+      0,
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-018",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "KB",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      182
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      212
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-019",
+   "question": "「CUDA」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "MRR",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/RW-39.md",
+     "chunk_ids": [
+      556,
+      557,
+      558
+     ],
+     "chunk_idx": [
+      1,
+      2,
+      3
+     ],
+     "co_entities": [
+      "CUDA",
+      "Ground",
+      "Truth"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      172,
+      186,
+      187
+     ],
+     "chunk_idx": [
+      18,
+      32,
+      33
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/RW-39.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-020",
+   "question": "哪两篇文档分别讨论了「FAIL」和「AI」？",
+   "bridge_entity": "Recall",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      532
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      172,
+      174,
+      185,
+      186,
+      187,
+      188
+     ],
+     "chunk_idx": [
+      18,
+      20,
+      31,
+      32,
+      33,
+      34
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-021",
+   "question": "跨文档看，「AI」和「AGENTS」的论述各落在哪一篇？",
+   "bridge_entity": "What",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      160,
+      202
+     ],
+     "chunk_idx": [
+      6,
+      48
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      207,
+      208
+     ],
+     "chunk_idx": [
+      4,
+      5
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-022",
+   "question": "「AGENTS」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "AGENTS.md",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      142,
+      143,
+      144
+     ],
+     "chunk_idx": [
+      0,
+      1,
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AI",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/architecture.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-023",
+   "question": "哪两篇文档分别讨论了「FAIL」和「Designing」？",
+   "bridge_entity": "API",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      551
+     ],
+     "chunk_idx": [
+      26
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      255
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "Designing",
+      "English",
+      "Every"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-024",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Code",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      176
+     ],
+     "chunk_idx": [
+      22
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-025",
+   "question": "「Add」与「Bottom」分别在哪两篇文档里被论述？",
+   "bridge_entity": "One",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      211,
+      217
+     ],
+     "chunk_idx": [
+      1,
+      7
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      237,
+      238,
+      254
+     ],
+     "chunk_idx": [
+      18,
+      19,
+      35
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/modules-overview.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-026",
+   "question": "哪两篇文档分别讨论了「AGENTS」和「API」？",
+   "bridge_entity": "See",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      209
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      296
+     ],
+     "chunk_idx": [
+      41
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/faq.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-027",
+   "question": "跨文档看，「Bottom」和「API」的论述各落在哪一篇？",
+   "bridge_entity": "URL",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      229,
+      236,
+      239,
+      250
+     ],
+     "chunk_idx": [
+      10,
+      17,
+      20,
+      31
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      303
+     ],
+     "chunk_idx": [
+      48
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-028",
+   "question": "「AI」与「Add」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Why",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      148,
+      149
+     ],
+     "chunk_idx": [
+      3,
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      165,
+      171,
+      172,
+      185,
+      199,
+      202
+     ],
+     "chunk_idx": [
+      11,
+      17,
+      18,
+      31,
+      45,
+      48
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-029",
+   "question": "哪两篇文档分别讨论了「AGENTS」和「AI」？",
+   "bridge_entity": "doc.path",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      143
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150
+     ],
+     "chunk_idx": [
+      5
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/architecture.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-030",
+   "question": "跨文档看，「BGE」和「API」的论述各落在哪一篇？",
+   "bridge_entity": "rerank",
+   "gt": [
+    {
+     "path": "incremental/增量验证-示例.md",
+     "chunk_ids": [
+      566
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "BGE",
+      "FTS5",
+      "PPR"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      266,
+      269,
+      272,
+      273,
+      276,
+      280,
+      282,
+      283,
+      297,
+      305,
+      306
+     ],
+     "chunk_idx": [
+      11,
+      14,
+      17,
+      18,
+      21,
+      25,
+      27,
+      28,
+      42,
+      50,
+      51
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "incremental/增量验证-示例.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-031",
+   "question": "「AI」与「API」分别在哪两篇文档里被论述？",
+   "bridge_entity": "unicode61",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      185
+     ],
+     "chunk_idx": [
+      31
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      298,
+      299
+     ],
+     "chunk_idx": [
+      43,
+      44
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-032",
+   "question": "哪两篇文档分别讨论了「English」和「个人外置大脑」？",
+   "bridge_entity": "Agent",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/任务清单.md",
+     "chunk_ids": [
+      396
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "English",
+      "搭开发团队协作规范和交付流程",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/团队协作规范与交付流程.md",
+     "chunk_ids": [
+      440
+     ],
+     "chunk_idx": [
+      3
+     ],
+     "co_entities": [
+      "English",
+      "个人外置大脑",
+      "小团队协作平台"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/任务清单.md",
+    "kb-from-zero/docs/团队协作规范与交付流程.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-033",
+   "question": "跨文档看，「AI」和「AGENTS」的论述各落在哪一篇？",
+   "bridge_entity": "Build",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      177
+     ],
+     "chunk_idx": [
+      23
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      205
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-034",
+   "question": "「AI」与「API」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Cross",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      273,
+      274
+     ],
+     "chunk_idx": [
+      18,
+      19
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-035",
+   "question": "哪两篇文档分别讨论了「AGENTS」和「AI」？",
+   "bridge_entity": "FAQ",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      142
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      199
+     ],
+     "chunk_idx": [
+      45
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-036",
+   "question": "跨文档看，「AI」和「AGENTS」的论述各落在哪一篇？",
+   "bridge_entity": "For",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      153
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      205
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-037",
+   "question": "「AI」与「API」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Fusion",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      172,
+      188
+     ],
+     "chunk_idx": [
+      18,
+      34
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      263
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-038",
+   "question": "哪两篇文档分别讨论了「AGENTS」和「AGENTS.md」？",
+   "bridge_entity": "KBL",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      144
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      209
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-039",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Knowledge",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      161
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      211
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-040",
+   "question": "「AI」与「API」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Qdrant",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      199
+     ],
+     "chunk_idx": [
+      45
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      267
+     ],
+     "chunk_idx": [
+      12
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-041",
+   "question": "哪两篇文档分别讨论了「CUDA」和「English」？",
+   "bridge_entity": "RAG",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/RW-39.md",
+     "chunk_ids": [
+      557
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "CUDA",
+      "Ground",
+      "Truth"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      360
+     ],
+     "chunk_idx": [
+      3
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/RW-39.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-042",
+   "question": "跨文档看，「AGENTS」和「AGENTS.md」的论述各落在哪一篇？",
+   "bridge_entity": "RELEASE",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      143
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      205
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-043",
+   "question": "「AI」与「API」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Rank",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      172
+     ],
+     "chunk_idx": [
+      18
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      263
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-044",
+   "question": "哪两篇文档分别讨论了「AI」和「API」？",
+   "bridge_entity": "Reciprocal",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      172
+     ],
+     "chunk_idx": [
+      18
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      263
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-045",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Retrieval",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      147
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      186,
+      187
+     ],
+     "chunk_idx": [
+      32,
+      33
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-046",
+   "question": "「Add」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Skill",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      212
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/skill-workbench.en.md",
+     "chunk_ids": [
+      319,
+      326
+     ],
+     "chunk_idx": [
+      0,
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Companion",
+      "Core"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/modules-overview.en.md",
+    "kb-from-zero/docs/skill-workbench.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-047",
+   "question": "哪两篇文档分别讨论了「AI」和「Add」？",
+   "bridge_entity": "Three",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      151
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      164,
+      190
+     ],
+     "chunk_idx": [
+      10,
+      36
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-048",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Two",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150
+     ],
+     "chunk_idx": [
+      5
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      179,
+      187
+     ],
+     "chunk_idx": [
+      25,
+      33
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-049",
+   "question": "「AI」与「Bottom」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Write",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      164
+     ],
+     "chunk_idx": [
+      10
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      247,
+      248
+     ],
+     "chunk_idx": [
+      28,
+      29
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-050",
+   "question": "哪两篇文档分别讨论了「AI」和「Add」？",
+   "bridge_entity": "You",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      146,
+      147
+     ],
+     "chunk_idx": [
+      1,
+      2
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      195,
+      199
+     ],
+     "chunk_idx": [
+      41,
+      45
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-051",
+   "question": "跨文档看，「API」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "BM25",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      263
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      491
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-052",
+   "question": "「AI」与「Add」分别在哪两篇文档里被论述？",
+   "bridge_entity": "But",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150
+     ],
+     "chunk_idx": [
+      5
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      201
+     ],
+     "chunk_idx": [
+      47
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-053",
+   "question": "哪两篇文档分别讨论了「Applies」和「English」？",
+   "bridge_entity": "CHANGELOG",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/team-collaboration.en.md",
+     "chunk_ids": [
+      347,
+      354
+     ],
+     "chunk_idx": [
+      9,
+      16
+     ],
+     "co_entities": [
+      "Applies",
+      "English",
+      "For"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/团队协作规范与交付流程.md",
+     "chunk_ids": [
+      444,
+      451
+     ],
+     "chunk_idx": [
+      7,
+      14
+     ],
+     "co_entities": [
+      "English",
+      "个人外置大脑",
+      "小团队协作平台"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/team-collaboration.en.md",
+    "kb-from-zero/docs/团队协作规范与交付流程.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-054",
+   "question": "跨文档看，「API」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "CI",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      305
+     ],
+     "chunk_idx": [
+      50
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      515
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-055",
+   "question": "「AI」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Claude",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      379
+     ],
+     "chunk_idx": [
+      22
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-056",
+   "question": "哪两篇文档分别讨论了「AI」和「English」？",
+   "bridge_entity": "Codex",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      379
+     ],
+     "chunk_idx": [
+      22
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-057",
+   "question": "跨文档看，「AI」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "Cursor",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      379
+     ],
+     "chunk_idx": [
+      22
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-058",
+   "question": "「API」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Encoder",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      273,
+      274
+     ],
+     "chunk_idx": [
+      18,
+      19
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      498,
+      499
+     ],
+     "chunk_idx": [
+      11,
+      12
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-059",
+   "question": "哪两篇文档分别讨论了「AI」和「Add」？",
+   "bridge_entity": "Full",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      152
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      200
+     ],
+     "chunk_idx": [
+      46
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-060",
+   "question": "跨文档看，「Agent」和「eval_gate.py」的论述各落在哪一篇？",
+   "bridge_entity": "GPU",
+   "gt": [
+    {
+     "path": "wiki/技术/Harness智能体任务编排-模型推力与任务分发.md",
+     "chunk_ids": [
+      37,
+      38,
+      42,
+      43,
+      44,
+      45,
+      47
+     ],
+     "chunk_idx": [
+      0,
+      1,
+      5,
+      6,
+      7,
+      8,
+      10
+     ],
+     "co_entities": [
+      "Agent",
+      "CPU",
+      "Harness"
+     ]
+    },
+    {
+     "path": "wiki/技术/检索分路诊断-融合权重为何不该动.md",
+     "chunk_ids": [
+      68
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "eval_gate.py",
+      "更优",
+      "docs"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "wiki/技术/Harness智能体任务编排-模型推力与任务分发.md",
+    "wiki/技术/检索分路诊断-融合权重为何不该动.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-061",
+   "question": "「AI」与「Bottom」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Key",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      173
+     ],
+     "chunk_idx": [
+      19
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      250
+     ],
+     "chunk_idx": [
+      31
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-062",
+   "question": "哪两篇文档分别讨论了「AI」和「Bottom」？",
+   "bridge_entity": "Markdown",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      150
+     ],
+     "chunk_idx": [
+      5
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      251
+     ],
+     "chunk_idx": [
+      32
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-063",
+   "question": "跨文档看，「API」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "OCR",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      261
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      489
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-064",
+   "question": "「Bottom」与「Build」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Open",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      219
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/setup-from-zero.en.md",
+     "chunk_ids": [
+      316
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "Build",
+      "English",
+      "Every"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/setup-from-zero.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-065",
+   "question": "哪两篇文档分别讨论了「AI」和「English」？",
+   "bridge_entity": "PDF",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      155,
+      171
+     ],
+     "chunk_idx": [
+      1,
+      17
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/双链路体系.md",
+     "chunk_ids": [
+      403,
+      409,
+      414
+     ],
+     "chunk_idx": [
+      1,
+      7,
+      12
+     ],
+     "co_entities": [
+      "AI",
+      "English",
+      "FTS5"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/双链路体系.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-066",
+   "question": "跨文档看，「Applies」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "PR",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/team-collaboration.en.md",
+     "chunk_ids": [
+      342
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "Applies",
+      "English",
+      "For"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/团队协作规范与交付流程.md",
+     "chunk_ids": [
+      440
+     ],
+     "chunk_idx": [
+      3
+     ],
+     "co_entities": [
+      "English",
+      "个人外置大脑",
+      "小团队协作平台"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/team-collaboration.en.md",
+    "kb-from-zero/docs/团队协作规范与交付流程.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-067",
+   "question": "「AGENTS」与「Bottom」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Put",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      204
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      249
+     ],
+     "chunk_idx": [
+      30
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/faq.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-068",
+   "question": "哪两篇文档分别讨论了「AI」和「Bottom」？",
+   "bridge_entity": "Run",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      197,
+      200
+     ],
+     "chunk_idx": [
+      43,
+      46
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      249
+     ],
+     "chunk_idx": [
+      30
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/open-source-policy.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-069",
+   "question": "跨文档看，「AI」和「API」的论述各落在哪一篇？",
+   "bridge_entity": "Self",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      186,
+      197
+     ],
+     "chunk_idx": [
+      32,
+      43
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      293
+     ],
+     "chunk_idx": [
+      38
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-070",
+   "question": "「Bottom」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Source",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      231,
+      234,
+      250,
+      252
+     ],
+     "chunk_idx": [
+      12,
+      15,
+      31,
+      33
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/skill-workbench.en.md",
+     "chunk_ids": [
+      321
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AI",
+      "Companion",
+      "Core"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/skill-workbench.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-071",
+   "question": "哪两篇文档分别讨论了「AGENTS」和「Add」？",
+   "bridge_entity": "That",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      208
+     ],
+     "chunk_idx": [
+      5
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      218
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/faq.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-072",
+   "question": "跨文档看，「API」和「Companion」的论述各落在哪一篇？",
+   "bridge_entity": "When",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      257,
+      282,
+      288
+     ],
+     "chunk_idx": [
+      2,
+      27,
+      33
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/task-list.en.md",
+     "chunk_ids": [
+      329
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "Companion",
+      "English",
+      "Never"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/task-list.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-073",
+   "question": "「AI」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "docs",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      197
+     ],
+     "chunk_idx": [
+      43
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/双链路体系.md",
+     "chunk_ids": [
+      434
+     ],
+     "chunk_idx": [
+      32
+     ],
+     "co_entities": [
+      "AI",
+      "English",
+      "PDF"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/双链路体系.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-074",
+   "question": "哪两篇文档分别讨论了「AI」和「AGENTS」？",
+   "bridge_entity": "dual-pipeline.en.md",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      152
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      207
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-075",
+   "question": "跨文档看，「AGENTS」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "双链路体系.md",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      143
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/从零到一搭建步骤.md",
+     "chunk_ids": [
+      390
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "English",
+      "README",
+      "做什么 + 为什么 + 验收标准"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/从零到一搭建步骤.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-076",
+   "question": "「API」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Actions",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      305
+     ],
+     "chunk_idx": [
+      50
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/检索层设计与评测.md",
+     "chunk_ids": [
+      515
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "API",
+      "English",
+      "怎么给个人知识库搭一层真正能用的检索"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/检索层设计与评测.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-077",
+   "question": "哪两篇文档分别讨论了「AI」和「English」？",
+   "bridge_entity": "Add",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      154
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "AI",
+      "English",
+      "Look"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      210
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "English",
+      "Module",
+      "This"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-078",
+   "question": "跨文档看，「AI」和「API」的论述各落在哪一篇？",
+   "bridge_entity": "After",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      197,
+      198
+     ],
+     "chunk_idx": [
+      43,
+      44
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      278,
+      279,
+      280,
+      297
+     ],
+     "chunk_idx": [
+      23,
+      24,
+      25,
+      42
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-079",
+   "question": "「AI」与「Applies」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Architecture",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      145
+     ],
+     "chunk_idx": [
+      0
+     ],
+     "co_entities": [
+      "AI",
+      "English",
+      "Every"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/team-collaboration.en.md",
+     "chunk_ids": [
+      340
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "Applies",
+      "English",
+      "For"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/team-collaboration.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-080",
+   "question": "哪两篇文档分别讨论了「AI」和「API」？",
+   "bridge_entity": "Before",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      153
+     ],
+     "chunk_idx": [
+      8
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      279,
+      303
+     ],
+     "chunk_idx": [
+      24,
+      48
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/retrieval-engine.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-081",
+   "question": "跨文档看，「AGENTS」和「AGENTS.md」的论述各落在哪一篇？",
+   "bridge_entity": "CN",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      144
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      209
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-082",
+   "question": "「AI」与「AGENTS」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Can",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      201
+     ],
+     "chunk_idx": [
+      47
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      205,
+      209
+     ],
+     "chunk_idx": [
+      2,
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-083",
+   "question": "哪两篇文档分别讨论了「AI」和「Add」？",
+   "bridge_entity": "Core",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      147
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      211
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-084",
+   "question": "跨文档看，「Build」和「AI」的论述各落在哪一篇？",
+   "bridge_entity": "Daily",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/setup-from-zero.en.md",
+     "chunk_ids": [
+      317
+     ],
+     "chunk_idx": [
+      9
+     ],
+     "co_entities": [
+      "Build",
+      "English",
+      "Every"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/skill-workbench.en.md",
+     "chunk_ids": [
+      326
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Companion",
+      "Core"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/setup-from-zero.en.md",
+    "kb-from-zero/docs/skill-workbench.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-085",
+   "question": "「AGENTS」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Directory",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      207
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/skill-workbench.en.md",
+     "chunk_ids": [
+      320
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AI",
+      "Companion",
+      "Core"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/faq.en.md",
+    "kb-from-zero/docs/skill-workbench.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-086",
+   "question": "哪两篇文档分别讨论了「API」和「Companion」？",
+   "bridge_entity": "Each",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      296
+     ],
+     "chunk_idx": [
+      41
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/task-list.en.md",
+     "chunk_ids": [
+      330
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "Companion",
+      "English",
+      "Never"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/task-list.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-087",
+   "question": "跨文档看，「Bottom」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "FallenPetal",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      239
+     ],
+     "chunk_idx": [
+      20
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      385
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-088",
+   "question": "「Build」与「AI」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Hub",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/setup-from-zero.en.md",
+     "chunk_ids": [
+      317
+     ],
+     "chunk_idx": [
+      9
+     ],
+     "co_entities": [
+      "Build",
+      "English",
+      "Every"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/skill-workbench.en.md",
+     "chunk_ids": [
+      326
+     ],
+     "chunk_idx": [
+      7
+     ],
+     "co_entities": [
+      "AI",
+      "Companion",
+      "Core"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/setup-from-zero.en.md",
+    "kb-from-zero/docs/skill-workbench.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-089",
+   "question": "哪两篇文档分别讨论了「API」和「English」？",
+   "bridge_entity": "ID",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/retrieval-engine.en.md",
+     "chunk_ids": [
+      303
+     ],
+     "chunk_idx": [
+      48
+     ],
+     "co_entities": [
+      "API",
+      "Designing",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      383
+     ],
+     "chunk_idx": [
+      26
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/retrieval-engine.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-090",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Index",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      156
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/modules-overview.en.md",
+     "chunk_ids": [
+      211
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "Add",
+      "English",
+      "Module"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/modules-overview.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-091",
+   "question": "「AGENTS」与「AGENTS.md」分别在哪两篇文档里被论述？",
+   "bridge_entity": "LICENSE",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/FAQ.md",
+     "chunk_ids": [
+      144
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "AI"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/faq.en.md",
+     "chunk_ids": [
+      209
+     ],
+     "chunk_idx": [
+      6
+     ],
+     "co_entities": [
+      "AGENTS",
+      "AGENTS.md",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/FAQ.md",
+    "kb-from-zero/docs/faq.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-092",
+   "question": "哪两篇文档分别讨论了「FAIL」和「Bert」？",
+   "bridge_entity": "LLM",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      535,
+      551,
+      552,
+      554
+     ],
+     "chunk_idx": [
+      10,
+      26,
+      27,
+      29
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "wiki/技术/有道云笔记-技术资源.md",
+     "chunk_ids": [
+      58
+     ],
+     "chunk_idx": [
+      2
+     ],
+     "co_entities": [
+      "Bert",
+      "Dark"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "wiki/技术/有道云笔记-技术资源.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-093",
+   "question": "跨文档看，「Bottom」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "License",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      231,
+      232,
+      235,
+      250,
+      251,
+      252,
+      253
+     ],
+     "chunk_idx": [
+      12,
+      13,
+      16,
+      31,
+      32,
+      33,
+      34
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      385
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-094",
+   "question": "「AI」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "NOT",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      168,
+      169,
+      170
+     ],
+     "chunk_idx": [
+      14,
+      15,
+      16
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      360
+     ],
+     "chunk_idx": [
+      3
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/dual-pipeline.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-095",
+   "question": "哪两篇文档分别讨论了「Bottom」和「English」？",
+   "bridge_entity": "NOTICE",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      238,
+      240,
+      248
+     ],
+     "chunk_idx": [
+      19,
+      21,
+      29
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      385
+     ],
+     "chunk_idx": [
+      28
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-096",
+   "question": "跨文档看，「AI」和「Add」的论述各落在哪一篇？",
+   "bridge_entity": "Never",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      146
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/dual-pipeline.en.md",
+     "chunk_ids": [
+      191
+     ],
+     "chunk_idx": [
+      37
+     ],
+     "co_entities": [
+      "AI",
+      "Add",
+      "English"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/dual-pipeline.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-097",
+   "question": "「FAIL」与「CUDA」分别在哪两篇文档里被论述？",
+   "bridge_entity": "PY",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/decisions/KG-41.md",
+     "chunk_ids": [
+      544,
+      546,
+      547,
+      548
+     ],
+     "chunk_idx": [
+      19,
+      21,
+      22,
+      23
+     ],
+     "co_entities": [
+      "FAIL",
+      "README",
+      "KB_W_KG"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/decisions/RW-39.md",
+     "chunk_ids": [
+      560,
+      561,
+      562,
+      563,
+      564
+     ],
+     "chunk_idx": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "co_entities": [
+      "CUDA",
+      "Ground",
+      "Truth"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/decisions/KG-41.md",
+    "kb-from-zero/docs/decisions/RW-39.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-098",
+   "question": "哪两篇文档分别讨论了「AI」和「English」？",
+   "bridge_entity": "Project",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      146
+     ],
+     "chunk_idx": [
+      1
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      371
+     ],
+     "chunk_idx": [
+      14
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-099",
+   "question": "跨文档看，「Bottom」和「English」的论述各落在哪一篇？",
+   "bridge_entity": "Purpose",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/open-source-policy.en.md",
+     "chunk_ids": [
+      234
+     ],
+     "chunk_idx": [
+      15
+     ],
+     "co_entities": [
+      "Bottom",
+      "Chinese",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      383
+     ],
+     "chunk_idx": [
+      26
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/open-source-policy.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  },
+  {
+   "qid": "W6MH-100",
+   "question": "「AI」与「English」分别在哪两篇文档里被论述？",
+   "bridge_entity": "Qoder",
+   "gt": [
+    {
+     "path": "kb-from-zero/docs/architecture.en.md",
+     "chunk_ids": [
+      149
+     ],
+     "chunk_idx": [
+      4
+     ],
+     "co_entities": [
+      "AI",
+      "Architecture",
+      "English"
+     ]
+    },
+    {
+     "path": "kb-from-zero/docs/usage.en.md",
+     "chunk_ids": [
+      379
+     ],
+     "chunk_idx": [
+      22
+     ],
+     "co_entities": [
+      "English",
+      "Guide",
+      "README"
+     ]
+    }
+   ],
+   "gt_paths": [
+    "kb-from-zero/docs/architecture.en.md",
+    "kb-from-zero/docs/usage.en.md"
+   ],
+   "origin": "semi-auto: cross-doc co-occurrence in sanitized corpus"
+  }
+ ]
+}

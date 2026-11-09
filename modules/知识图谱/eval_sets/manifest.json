@@ -1,0 +1,17 @@
+{
+  "set": "kg_multihop_v2026.11.json",
+  "sha1": "8f6b89260364b6e6e4ac736c2a405361c6909d32",
+  "n_items": 100,
+  "topk": 5,
+  "rules": {
+    "min_delta_pp": 3.0,
+    "max_p": 0.05,
+    "topk": 5
+  },
+  "generation": "semi-automatic, gt traceable to path + chunk_id + chunk_idx",
+  "human_judged": 0,
+  "calibration": "UNCALIBRATED",
+  "note": "半自动标注，未做人标复核；结论只作能力演示，不作为接主链路的依据。题目在 --freeze 时冻结，--run 会校验 sha1，不许事后挑题或改判据。",
+  "baseline_any_at5": 0.63,
+  "saturation": "OK"
+}

@@ -1,0 +1,188 @@
+{
+  "generated_at": "2026-11-06 17:58:54",
+  "source_roots": [
+    "<KB_ROOT>/wiki/技术",
+    "<OSS_ROOT>/docs"
+  ],
+  "terms_loaded": 12,
+  "docs_kept": 33,
+  "chunks": 565,
+  "docs_sanitized": 23,
+  "docs_skipped": 55,
+  "skip_reasons": {
+    "专名": 54,
+    "业务类别": 6
+  },
+  "docs_duplicate": 0,
+  "elapsed_s": 0.92,
+  "entities": 1051,
+  "typed_edges": 33,
+  "passages": 565,
+  "docs": [
+    {
+      "path": "wiki/技术/AI增强爬虫-三层演进与受限AI分析闭环.md",
+      "source": "wiki-tech",
+      "chunks": 17
+    },
+    {
+      "path": "wiki/技术/Agently-Mail-安装与使用.md",
+      "source": "wiki-tech",
+      "chunks": 19
+    },
+    {
+      "path": "wiki/技术/Harness智能体任务编排-模型推力与任务分发.md",
+      "source": "wiki-tech",
+      "chunks": 12
+    },
+    {
+      "path": "wiki/技术/多答案评测的全命中口径.md",
+      "source": "wiki-tech",
+      "chunks": 7
+    },
+    {
+      "path": "wiki/技术/有道云笔记-技术资源.md",
+      "source": "wiki-tech",
+      "chunks": 5
+    },
+    {
+      "path": "wiki/技术/检索分路诊断-融合权重为何不该动.md",
+      "source": "wiki-tech",
+      "chunks": 9
+    },
+    {
+      "path": "wiki/技术/检索失败归因-召回失败还是排序失败.md",
+      "source": "wiki-tech",
+      "chunks": 15
+    },
+    {
+      "path": "wiki/技术/知识库项目-书面陈述.md",
+      "source": "wiki-tech",
+      "chunks": 16
+    },
+    {
+      "path": "wiki/技术/知识库项目-面试讲解与追问应答.md",
+      "source": "wiki-tech",
+      "chunks": 34
+    },
+    {
+      "path": "wiki/技术/编码四大原则.md",
+      "source": "wiki-tech",
+      "chunks": 7
+    },
+    {
+      "path": "kb-from-zero/docs/FAQ.md",
+      "source": "oss-docs",
+      "chunks": 3
+    },
+    {
+      "path": "kb-from-zero/docs/architecture.en.md",
+      "source": "oss-docs",
+      "chunks": 9
+    },
+    {
+      "path": "kb-from-zero/docs/dual-pipeline.en.md",
+      "source": "oss-docs",
+      "chunks": 49
+    },
+    {
+      "path": "kb-from-zero/docs/faq.en.md",
+      "source": "oss-docs",
+      "chunks": 7
+    },
+    {
+      "path": "kb-from-zero/docs/modules-overview.en.md",
+      "source": "oss-docs",
+      "chunks": 9
+    },
+    {
+      "path": "kb-from-zero/docs/open-source-policy.en.md",
+      "source": "oss-docs",
+      "chunks": 36
+    },
+    {
+      "path": "kb-from-zero/docs/retrieval-engine.en.md",
+      "source": "oss-docs",
+      "chunks": 53
+    },
+    {
+      "path": "kb-from-zero/docs/setup-from-zero.en.md",
+      "source": "oss-docs",
+      "chunks": 11
+    },
+    {
+      "path": "kb-from-zero/docs/skill-workbench.en.md",
+      "source": "oss-docs",
+      "chunks": 9
+    },
+    {
+      "path": "kb-from-zero/docs/task-list.en.md",
+      "source": "oss-docs",
+      "chunks": 10
+    },
+    {
+      "path": "kb-from-zero/docs/team-collaboration.en.md",
+      "source": "oss-docs",
+      "chunks": 19
+    },
+    {
+      "path": "kb-from-zero/docs/usage.en.md",
+      "source": "oss-docs",
+      "chunks": 29
+    },
+    {
+      "path": "kb-from-zero/docs/从零到一搭建步骤.md",
+      "source": "oss-docs",
+      "chunks": 9
+    },
+    {
+      "path": "kb-from-zero/docs/任务清单.md",
+      "source": "oss-docs",
+      "chunks": 7
+    },
+    {
+      "path": "kb-from-zero/docs/双链路体系.md",
+      "source": "oss-docs",
+      "chunks": 35
+    },
+    {
+      "path": "kb-from-zero/docs/团队协作规范与交付流程.md",
+      "source": "oss-docs",
+      "chunks": 17
+    },
+    {
+      "path": "kb-from-zero/docs/开源守则.md",
+      "source": "oss-docs",
+      "chunks": 21
+    },
+    {
+      "path": "kb-from-zero/docs/技能工作台.md",
+      "source": "oss-docs",
+      "chunks": 5
+    },
+    {
+      "path": "kb-from-zero/docs/架构总览.md",
+      "source": "oss-docs",
+      "chunks": 7
+    },
+    {
+      "path": "kb-from-zero/docs/检索层设计与评测.md",
+      "source": "oss-docs",
+      "chunks": 30
+    },
+    {
+      "path": "kb-from-zero/docs/模块总览-示例.md",
+      "source": "oss-docs",
+      "chunks": 8
+    },
+    {
+      "path": "kb-from-zero/docs/decisions/KG-41.md",
+      "source": "oss-docs",
+      "chunks": 30
+    },
+    {
+      "path": "kb-from-zero/docs/decisions/RW-39.md",
+      "source": "oss-docs",
+      "chunks": 11
+    }
+  ]
+}

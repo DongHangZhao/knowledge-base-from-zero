@@ -34,6 +34,7 @@ What's in this repository:
 | User guide | `docs/usage.en.md` | What to actually do once you have the repo (hub / templates / tools / letting AI take over) |
 | Release & install guide | `RELEASE.en.md` | How to use the zip / exe from Releases |
 | Policy enforcement tools | `tools/` | Example inventory generator, privacy scanner, bilingual checker |
+| Knowledge graph subsystem (GraphRAG) | `modules/知识图谱/` | Standalone, de-identified, presentable: NPMI co-occurrence graph + PPR/1hop/hybrid search + single-file visualization; LLM capability layer off by default, delivery gate machine-judged |
 
 > 🌐 **Every document ships in both Chinese and English**: each file has a "简体中文 ｜ English" switcher at the top, and the two versions correspond one to one.
 > English naming: `<original-name>.en.md` at the repository root and in `kb-hub/`; semantic English names under `docs/` (e.g. `architecture.en.md`); `<original-name>.en.md` under `templates/`.

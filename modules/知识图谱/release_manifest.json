@@ -1,0 +1,493 @@
+{
+  "schema": "w6-release-attestation/v1",
+  "inspired_by": "SLSA L1 provenance + golden-set calibration + secret-scan baseline gate (判据借用，实现为本地纯标准库；无签名、无云端、无外部服务)",
+  "verified_at": "2026-11-09 14:38:24",
+  "overall": "PASS_WITH_WAIVERS",
+  "blocked_checks": [],
+  "provenance": {
+    "subject": {
+      "index.html": {
+        "bytes": 77066,
+        "sha1": "58c638ba03e1"
+      },
+      "index-nowm.html": {
+        "bytes": 77066,
+        "sha1": "58c638ba03e1"
+      },
+      "ego-2hop.html": {
+        "bytes": 66356,
+        "sha1": "95e9343ec676"
+      },
+      "ego-2hop-nowm.html": {
+        "bytes": 66356,
+        "sha1": "95e9343ec676"
+      },
+      "global_graph.json": {
+        "bytes": 81355,
+        "sha1": "dda1071e0645"
+      },
+      "ego_2hop_graph.json": {
+        "bytes": 65907,
+        "sha1": "4b05cb1bc332"
+      }
+    },
+    "build": {
+      "code_sha1": {
+        "build_corpus.py": "c933cea7e32b",
+        "build_kg_viz.py": "47760eed0b5f",
+        "eval_multihop.py": "46ee5fe11cbd",
+        "export_kg_graph.py": "4f6420f68847",
+        "kg_build.py": "d383394a9fe7",
+        "kg_extract.py": "a534fde22978",
+        "kg_gate.py": "2b79ec2052a2",
+        "kg_ppr.py": "6ac7acce89ca",
+        "kg_search.py": "f775429fd8cf",
+        "kg_terms.py": "a09e52311ed8",
+        "release_verify.py": "8c257aea4dc8",
+        "viz_export.py": "9f0da7febc1a"
+      },
+      "originals_history_baseline_2026_11_06": {
+        "kb_rag.py": "2a5dc28c362f",
+        "kg_extract.py": "a534fde22978",
+        "kg_gate.py": "2b79ec2052a2",
+        "kg_ppr.py": "5c333ee1329e",
+        "kg_terms.py": "a09e52311ed8",
+        "build_kg_viz.py": "47760eed0b5f",
+        "export_kg_graph.py": "4f6420f68847"
+      },
+      "originals_current": {
+        "kb_rag.py": "bb7197876b61",
+        "kg_extract.py": "a534fde22978",
+        "kg_gate.py": "2b79ec2052a2",
+        "kg_ppr.py": "5c333ee1329e",
+        "kg_terms.py": "a09e52311ed8",
+        "build_kg_viz.py": "47760eed0b5f",
+        "export_kg_graph.py": "4f6420f68847"
+      },
+      "external_changes_not_by_this_subsystem": [
+        {
+          "file": "kb_rag.py",
+          "history_baseline_2026_11_06": "2a5dc28c362f",
+          "current": "bb7197876b61",
+          "mtime": "2026-11-07 07:10:16",
+          "attribution": "非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实"
+        }
+      ],
+      "graph": {
+        "nodes": 1668,
+        "edges": 5806,
+        "covered_docs": 34,
+        "covered_chunks": 566,
+        "build_elapsed_s": 0.697,
+        "b1_synonym_edges": 0,
+        "b1_synonym_tagged_edges": 2,
+        "b2_passage_nodes": 566,
+        "b3_typed_edges": 41,
+        "enriched_nodes": 645,
+        "enriched_edges": 1886,
+        "base_graph": {
+          "nodes": 1023,
+          "edges": 3920,
+          "avg_degree": 7.663734115347019,
+          "density": 0.007498761365310194
+        },
+        "coverage_note": "脱敏语料池上限：生产库含真实业务/隐私正文，红线禁止用于对外可展示子系统；故覆盖篇数止于公开示例 + 方法学页，未达 2000 篇量级。"
+      },
+      "ablate_summary": {
+        "queries": [
+          "提示词",
+          "智能体",
+          "双链路体系.md",
+          "为什么"
+        ],
+        "cases": [
+          "B1_同义词边",
+          "B2_段落节点",
+          "B3_有类型边"
+        ]
+      }
+    },
+    "corpus_snapshot": {
+      "path": "corpus/manifest.json",
+      "sha1": "a6a58abeaede",
+      "docs": 33,
+      "chunks": 565
+    },
+    "eval_set": {
+      "path": "eval_sets/kg_multihop_v2026.11.json",
+      "sha1": "8f6b89260364",
+      "n_items": 100,
+      "calibration": "UNCALIBRATED",
+      "human_judged": 0
+    },
+    "pin_note": "🔴 语料快照 sha1 为事后补记（post-hoc），非题库生成时写入；若要严格 pin，需重跑 --freeze 并把 hash 写进题库 manifest。",
+    "events": [
+      {
+        "event": "graph_build",
+        "actor": "kg_build.py",
+        "writes": "modules/知识图谱/state/ 与 corpus/",
+        "touches_prod_db": false
+      },
+      {
+        "event": "index_governance_build",
+        "actor": "kb_rag.py build (AGENTS.md §7)",
+        "writes": "modules/知识库索引/state/kb.db",
+        "touches_prod_db": true,
+        "reason": "收尾索引治理，非图谱子系统写入；与 graph_build 是两类独立事件"
+      }
+    ],
+    "write_isolation_probe": {
+      "command": "kg_build.py --stats",
+      "rc": 0,
+      "stderr_tail": "",
+      "prod_db_before": [
+        4698374144,
+        1794006130000000000
+      ],
+      "prod_db_after": [
+        4698374144,
+        1794006130000000000
+      ],
+      "prod_db_unchanged": true,
+      "changed_files": [
+        "state/graph_stats.json",
+        "state/kg_w6.pkl"
+      ],
+      "changed_outside_here": [],
+      "reused_from_previous_run": true
+    }
+  },
+  "calibration": {
+    "n_sampled": 30,
+    "seed": 20261107,
+    "csv": "calibration/judge_calibration_30.csv",
+    "guide": "calibration/标注规范.md",
+    "intervals": {
+      "baseline": {
+        "any@5": {
+          "k": 63,
+          "n": 100,
+          "rate": 0.63,
+          "wilson95": [
+            0.5322,
+            0.7182
+          ]
+        },
+        "all@5": {
+          "k": 23,
+          "n": 100,
+          "rate": 0.23,
+          "wilson95": [
+            0.1584,
+            0.3215
+          ]
+        }
+      },
+      "1hop": {
+        "any@5": {
+          "k": 78,
+          "n": 100,
+          "rate": 0.78,
+          "wilson95": [
+            0.6893,
+            0.85
+          ]
+        },
+        "all@5": {
+          "k": 30,
+          "n": 100,
+          "rate": 0.3,
+          "wilson95": [
+            0.2189,
+            0.3959
+          ]
+        }
+      },
+      "ppr": {
+        "any@5": {
+          "k": 78,
+          "n": 100,
+          "rate": 0.78,
+          "wilson95": [
+            0.6893,
+            0.85
+          ]
+        },
+        "all@5": {
+          "k": 24,
+          "n": 100,
+          "rate": 0.24,
+          "wilson95": [
+            0.1669,
+            0.3323
+          ]
+        }
+      }
+    },
+    "paired_ci": [
+      {
+        "pair": "baseline → +1hop",
+        "metric": "any@5",
+        "delta_pp": 15.0,
+        "ci95_pp": [
+          2.18,
+          27.82
+        ],
+        "mcnemar_p": 0.035698,
+        "n_discordant": 45
+      },
+      {
+        "pair": "baseline → +ppr",
+        "metric": "any@5",
+        "delta_pp": 15.0,
+        "ci95_pp": [
+          2.18,
+          27.82
+        ],
+        "mcnemar_p": 0.035698,
+        "n_discordant": 45
+      },
+      {
+        "pair": "baseline → +1hop",
+        "metric": "all@5",
+        "delta_pp": 7.0,
+        "ci95_pp": [
+          -2.7,
+          16.7
+        ],
+        "mcnemar_p": 0.229523,
+        "n_discordant": 25
+      },
+      {
+        "pair": "baseline → +ppr",
+        "metric": "all@5",
+        "delta_pp": 1.0,
+        "ci95_pp": [
+          -8.4,
+          10.4
+        ],
+        "mcnemar_p": 1.0,
+        "n_discordant": 23
+      }
+    ],
+    "limitation": "30 条仅够 judge-calibration 起步，不足以做 PPI（业界 150-200 条）"
+  },
+  "privacy_gate": {
+    "terms_file": "<库外，路径不落库>",
+    "terms_sha1": "c6f2ee8031cd342af1309de91f3d9bcddd68733e",
+    "terms_count": 12,
+    "scan": {
+      "files_scanned": 23,
+      "rules": 16,
+      "terms_loaded": 12,
+      "block": 0,
+      "warn": 1,
+      "ok": true
+    },
+    "passed": true,
+    "suggestions_count": 90,
+    "suggestions_path": "state/term_suggestions.txt（不进 git，内容不打印）"
+  },
+  "non_indexable_artifacts": [
+    {
+      "path": "alias_table.json",
+      "class": "data asset / artifact catalog",
+      "why_not_indexed": "JSON 数据、评测集、清单、增量示例属机器可读资产；全文检索只服务人读文档，业界 registry 与 storage 分离。"
+    },
+    {
+      "path": "eval_sets/kg_multihop_v2026.11.json",
+      "class": "data asset / artifact catalog",
+      "why_not_indexed": "JSON 数据、评测集、清单、增量示例属机器可读资产；全文检索只服务人读文档，业界 registry 与 storage 分离。"
+    },
+    {
+      "path": "eval_sets/manifest.json",
+      "class": "data asset / artifact catalog",
+      "why_not_indexed": "JSON 数据、评测集、清单、增量示例属机器可读资产；全文检索只服务人读文档，业界 registry 与 storage 分离。"
+    },
+    {
+      "path": "corpus/manifest.json",
+      "class": "data asset / artifact catalog",
+      "why_not_indexed": "JSON 数据、评测集、清单、增量示例属机器可读资产；全文检索只服务人读文档，业界 registry 与 storage 分离。"
+    },
+    {
+      "path": "corpus/增量验证-示例.md",
+      "class": "data asset / artifact catalog",
+      "why_not_indexed": "JSON 数据、评测集、清单、增量示例属机器可读资产；全文检索只服务人读文档，业界 registry 与 storage 分离。"
+    }
+  ],
+  "checks": [
+    {
+      "id": "C1-写隔离/判据8",
+      "status": "PASS",
+      "statement": "图谱构建只写本目录；生产 kb.db 未被子系统触碰；索引治理 build 是另一类独立事件。",
+      "criterion": "探针前后生产库 (size, mtime_ns) 一致 + 本轮变更清单里没有生产脚本 + 库外 0；跨窗口对原版的改动单独登记为 external_changes，不拿历史 sha1 误判本轮",
+      "evidence": [
+        "state/release_probe.json",
+        "state/index_build_w7.out",
+        "state/graph_stats.json"
+      ]
+    },
+    {
+      "id": "C2-文本盲区5件",
+      "status": "PASS",
+      "statement": "5 个 JSON/示例文件按业界 registry/storage 分离登记为「非检索资产」，不是索引欠账",
+      "criterion": "每类文件写明为何不进全文索引；核心资产（README/py/结论页）已进索引且可检索",
+      "evidence": [
+        "release_manifest.json::non_indexable_artifacts",
+        "state/orphan.out（历史 rc=3 记录）"
+      ]
+    },
+    {
+      "id": "C3-沉淀历史欠账",
+      "status": "PASS",
+      "statement": "sediment_guard 的 9 条 FAIL 逐条核对为 11-02～11-04 历史欠账，本轮 0 新增",
+      "criterion": "报告时间戳早于本轮新建文件；本轮新页已挂 > Raw: 并进 index.md/log.md",
+      "evidence": [
+        "modules/知识沉淀/reports/（最新一份）"
+      ]
+    },
+    {
+      "id": "C4-评测校准",
+      "status": "LIMITED",
+      "statement": "统计不确定性已量化（Wilson 区间 + 配对 delta 95%CI）；人标 0 条，数字仍不可当公开评测用",
+      "criterion": "human_judged=0 → 只允许 LIMITED；校准包已生成且责任人=库主；30 条不足以做 PPI",
+      "evidence": [
+        "eval_sets/manifest.json",
+        "calibration/judge_calibration_30.csv",
+        "calibration/标注规范.md",
+        "state/eval_result.json"
+      ]
+    },
+    {
+      "id": "C5-语料规模",
+      "status": "PASS",
+      "statement": "34 篇定位为 demo-scale 方法验证，pin 到 corpus snapshot digest；不切块充数",
+      "criterion": "题库 sha1 与语料清单 sha1 一并登记；规模不足的原因写明为红线代价",
+      "evidence": [
+        "corpus/manifest.json",
+        "eval_sets/kg_multihop_v2026.11.json"
+      ]
+    },
+    {
+      "id": "C6-隐私门禁",
+      "status": "PASS",
+      "statement": "词表版本化 + 机读 gate（files_scanned>0 且 block=0）+ 疑似专名建议交人审",
+      "criterion": "rc=0 且 files_scanned>0，防 0 文件假通过；对外发布另列需许可项",
+      "evidence": [
+        "state/privacy_final.json",
+        "state/term_suggestions.txt"
+      ]
+    },
+    {
+      "id": "C7-LLM能力层",
+      "status": "PASS",
+      "statement": "LLM 环节已建成可运行代码，默认 off；关掉开关自测全过（不联网），开启后实跑过并有对照证据。",
+      "criterion": "五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ 默认 enabled=false + A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt）",
+      "evidence": [
+        "llm/llm_kit.py",
+        "llm/enhance.py",
+        "llm/cli.py",
+        "llm/b3_review.py",
+        "llm/README.md",
+        "state/llm_ab_20261109_133003.json",
+        "state/b3_llm_review_20261109_133309.json",
+        "state/llm_trace.jsonl"
+      ]
+    }
+  ],
+  "decisions_pending": [
+    {
+      "id": "D1-4.38GB沙盒",
+      "tier": "L3 减法 · 已执行",
+      "needs": "已无需拍板：2026-11-09 库主书面授权「不影响可视化、属冗余」并已执行",
+      "note": "已删除。删前判：LinkType/Target 空、非 junction、非硬链接、nlink=1、与生产 kb.db 不同 inode。实测为过期索引快照（docs 8363 / chunks 111441，生产 9057 / 128505），可视化读 state/kg_w6.pkl、kb_rag 零引用。删前先备份到库外（路径由库主自持，不入库、不入 git），再走 delete_guard.py --tier L3 进回收站；伴生 -shm/-wal 已清。⚠️ 空间口径：备份仍在时磁盘未真正回收 4.38GB，确认无误后删备份才回收。",
+      "command": "python release_verify.py --no-probe   # 复跑核对 manifest.sandbox.deleted=true"
+    },
+    {
+      "id": "D2-INDEX_TARGETS硬登记",
+      "tier": "改索引机制",
+      "needs": "库主拍板",
+      "note": "本轮按 BY_DESIGN 已收口；若坚持把数据文件塞进 FTS5 才需要动白名单",
+      "command": "改 INDEX_TARGETS 后跑 orphan_scan.py --strict 复核"
+    },
+    {
+      "id": "D3-对外发布",
+      "tier": "L2 云端/公开 · 已授权常态执行",
+      "needs": "已授权：库主要求「每次更新加模块都要发版」，避免 GitHub 与生产分叉；每轮发布前仍报备一次范围",
+      "note": "发布口径：镜像 modules/知识图谱（含 llm/；排除 state/、__pycache__、.git）→ kb-from-zero；VERSION bump minor + CHANGELOG（含决策理由）+ HANDOFF（只追加坑）；privacy_scan.py --git-only 0 BLOCK 才允许 push / tag。",
+      "command": "见 W12 §F：同步 → 版本三件套 → privacy_scan --git-only → git push/tag"
+    },
+    {
+      "id": "D4-LLM启用范围",
+      "tier": "运行开关（能力已建）",
+      "needs": "① 常驻开启已执行（用户级 KG_LLM_ENABLED=1，2026-11-09）；② B3 全量 41 条质检待开窗口跑（W12 §B）；③ 主检索链路仍建议不接",
+      "note": "2026-11-09 口径为「能力必建·开关可控」：llm/ 五件套已建成并实跑——关系判定 A/B（n=10 人标）0.3 → 0.7、0 降级；B3 抽样 12 条质检 11 条判碎片边；关掉开关重放结论逐条一致。实测延迟 p50 3257ms / p90 4519ms（31 次真实调用）；kb_rag 主链路零 import llm_kit，所以开关常开＝在线零延时；若将来接同步链路必须异步 + 缓存，3.3s 不许进热路径。C4/题面/gt 三项仍不建（方法论禁止模型自证，非省钱）。隐私红线不变。",
+      "command": "setx KG_LLM_ENABLED 1   # 已执行（User 作用域，新进程生效）"
+    }
+  ],
+  "sandbox": {
+    "deleted": true
+  },
+  "references": [
+    {
+      "title": "RAG Evaluation Metrics: Retrieval, Reranking, Generation",
+      "url": "https://slavadubrov.github.io/blog/2026/05/10/rag-evaluation-metrics/",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Building a Golden Dataset for RAG Evaluation: A Systematic Engineering Approach",
+      "url": "https://www.querystack.tech/post/building-a-golden-dataset-for-rag-evaluation-a-systematic-engineering-approach-78fc31",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "RAG Accuracy and Hallucinations: How to Measure Them (OPORA)",
+      "url": "https://agentsunrise.pro/articles/rag-accuracy-hallucinations-measurement",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Ragas 官方文档",
+      "url": "https://docs.ragas.io/",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "ML Model Provenance: Signing and Verification Guide (SLSA / in-toto)",
+      "url": "https://aidefense.dev/posts/securing-the-ml-model-supply-chain",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "稳健可靠的 MLOps CI/CD 流水线（模型护照 / Model Passport）",
+      "url": "https://beefed.ai/zh/reliable-mlops-cicd-pipelines",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "AI Supply Chain and Model Provenance (Ch.23)",
+      "url": "https://www.socratopia.app/library/security-engineering-ai-era-en/chapter-23",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Gitleaks: Pattern-driven secret scanner for git repositories and file content",
+      "url": "https://zairalabs.ai/guide/tools/gitleaks",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Best secrets scanning tools for Git repos and pre-commit",
+      "url": "https://safeguard.sh/resources/blog/best-secrets-scanning-tools-for-git-repos-and-pre-commit",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Microsoft Presidio（PII 检测与匿名化 SDK）",
+      "url": "https://aicompliance.ai/tools/presidio",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Model Registries（元数据与产物分离）",
+      "url": "https://layerwiseml.com/topics/engineering/model-registries.html",
+      "accessed": "2026-11-07"
+    },
+    {
+      "title": "Policy-as-Code Pipelines: Secret, Dependency, and SBOM Scanning in Enterprise CI/CD",
+      "url": "https://jamutech.com/policy-as-code-pipelines-secret-dependency-and-sbom-scanning-in-enterprise-ci-cd",
+      "accessed": "2026-11-07"
+    }
+  ]
+}

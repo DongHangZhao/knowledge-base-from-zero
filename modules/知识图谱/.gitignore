@@ -1,0 +1,9 @@
+# W6 独立图谱子系统：只有源码 / 清单 / 文档进版本追踪
+# state/ 下的独立 sqlite 是运行时产物，不提交、不上传
+state/
+__pycache__/
+*.pyc
+# 库外敏感词表的本地副本（永不入库、永不追踪）
+corpus/sensitive_terms.txt
+# 可视化产物的临时备份
+*.html.bak

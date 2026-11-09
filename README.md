@@ -37,6 +37,7 @@
 | 发布与安装说明 | `RELEASE.md` | Releases 里的 zip / exe 怎么下载安装 |
 | 守则执行工具 | `tools/` | 示例清单生成器、隐私扫描器、双语校验器 |
 | 检索引擎（RAG Index Engine） | `modules/知识库索引/` | 三链路混合检索核心：FTS5 ⊕ BGE ⊕ 字级 substring + reranker，详见其 `README.md` |
+| 知识图谱子系统（GraphRAG） | `modules/知识图谱/` | 独立、脱敏、可展示：NPMI 共现图 + PPR/1hop/hybrid 检索 + 单文件可视化；LLM 能力层默认 off，交付闸门机器判定 |
 
 > 🌐 **全部文档中英双语**：每篇正文顶部有「简体中文 ｜ English」切换，两版内容一一对应。
 > 英文版命名规则：根目录与 `kb-hub/` 用 `<原名>.en.md`；`docs/` 用语义化英文名（如 `architecture.en.md`）；`templates/` 用 `<原名>.en.md`。
