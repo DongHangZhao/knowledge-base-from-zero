@@ -1,0 +1,50 @@
+name: version-gate
+
+# 版本一致性门禁：VERSION / 根 CHANGELOG / 最新 tag / 中英 RELEASE / 发布脚本
+# 六处口径任一不一致就 fail，避免「打了 tag 却没写版本日志」这种静默事故。
+# 🔴 只做校验，绝不 push、绝不打 tag、绝不建 Release —— 对外动作归库主单独授权。
+# 🔴 隐私扫描在这里只有 L1+L3（词表按红线不得入库）；CI 绿 ≠ 可以发布，
+#    发布前必须在本机带词表再跑一次 privacy_scan.py --git-only。
+
+on:
+  push:
+    paths:
+      - "VERSION"
+      - "CHANGELOG.md"
+      - "RELEASE.md"
+      - "RELEASE.en.md"
+      - "publish_to_github.bat"
+      - "tools/release_gate.py"
+      - ".github/workflows/version-check.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "CHANGELOG.md"
+      - "RELEASE.md"
+      - "RELEASE.en.md"
+      - "publish_to_github.bat"
+      - "tools/release_gate.py"
+      - ".github/workflows/version-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 版本一致性 + Release 正文可抽取
+        run: python tools/release_gate.py --check
+
+      - name: 隐私终审（CI 只有 L1+L3）
+        run: python tools/privacy_scan.py --root . --git-only --no-assets

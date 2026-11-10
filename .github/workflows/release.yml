@@ -28,13 +28,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: 抽 Release 正文（CHANGELOG 无该版本段 → 失败）
+      - name: 版本一致性门禁（六处口径 + 根 CHANGELOG 顶段）
+        run: |
+          set -euo pipefail
+          python tools/release_gate.py --check --tag "$GITHUB_REF_NAME"
+
+      # 🔴 2026-11-10 修：原来不传 --changelog，默认读 modules/知识库索引/CHANGELOG.md，
+      #    而该文件最高只到 v1.16.0 —— 推 v1.17.x tag 必被 --check 拒发（找不到版本段）。
+      #    Release 正文统一从根 CHANGELOG.md 抽；子系统细粒度日志仍留在各自目录。
+      - name: 抽 Release 正文（根 CHANGELOG 无该版本段 → 失败）
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           echo "tag=$GITHUB_REF_NAME version=$VERSION"
-          python tools/make_release_notes.py --version "$VERSION" --check
-          python tools/make_release_notes.py --version "$VERSION" --out notes.md
+          python tools/make_release_notes.py --version "$VERSION" --changelog CHANGELOG.md --check
+          python tools/make_release_notes.py --version "$VERSION" --changelog CHANGELOG.md --out notes.md
           echo "--- notes.md 前 10 行 ---"
           head -10 notes.md
           test -s notes.md

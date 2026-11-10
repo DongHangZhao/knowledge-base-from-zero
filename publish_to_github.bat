@@ -4,8 +4,14 @@ rem ============================================================
 rem  publish_to_github.bat  (UTF-8, chcp 65001 required)
 rem  One-shot publisher for the "knowledge-base-from-zero" repo.
 rem
-rem  Flow:  privacy scan -> git init/commit -> create public repo
-rem         -> push -> verify assets -> create Release v1.3.1
+rem  Flow:  release-gate preflight -> privacy scan -> git init/commit
+rem         -> create public repo -> push -> verify assets -> create Release
+rem
+rem  🔴 TAG is read from root VERSION (the single source of truth).
+rem     It used to be hard-coded as v1.3.1 and stayed stale for 3 releases.
+rem  🔴 This is the ONLY script that performs outbound actions.
+rem     Run it by hand = you are authorizing the publish; no automation calls it.
+rem     tools/release_gate.py itself NEVER pushes.
 rem
 rem  Prereqs:
 rem    1) run "gh auth login" once (needs YOUR GitHub account)
@@ -18,7 +24,16 @@ title knowledge-base-from-zero publisher
 set "ROOT=%~dp0"
 set "REPO_NAME=knowledge-base-from-zero"
 set "REPO_DESC=知识库搭建体系：从零到一完整搭建（方法论 + 门户 + 示例，去隐私化）"
-set "TAG=v1.3.1"
+
+rem ---- TAG from VERSION (never hard-code) ----
+set "TAG="
+for /f "usebackq delims=" %%v in ("%ROOT%VERSION") do set "TAG=v%%v"
+if not defined TAG (
+  echo [ERROR] Cannot read VERSION - aborting.
+  pause
+  exit /b 1
+)
+echo   TAG=%TAG%  ^(from VERSION^)
 
 rem resolve gh: PATH first, then common install locations
 set "GH=gh"
@@ -42,6 +57,14 @@ if errorlevel 1 (
 
 cd /d "%ROOT%"
 
+echo [0.5/6] release gate (version consistency + privacy + payload size) ...
+%PY% tools\release_gate.py --check --preflight
+if errorlevel 1 (
+  echo [ERROR] release gate failed. Fix it before publishing.
+  pause
+  exit /b 1
+)
+
 echo [1/6] privacy scan (BLOCK = stop) ...
 if exist "kb-hub\inventory.json" (
   echo [ERROR] kb-hub\inventory.json exists - it contains real local paths.
@@ -64,7 +87,7 @@ if not exist ".git" ( git init -q )
 git add -A
 git diff --cached --quiet
 if errorlevel 1 (
-  git commit -q -m "release: %TAG% 检索 rerank 精排层 + 零命中警示 + 构建入口统一 + 中英双语同步"
+  git commit -q -m "release: %TAG%"
 ) else (
   echo   (nothing to commit)
 )
