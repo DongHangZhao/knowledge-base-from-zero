@@ -28,3 +28,10 @@ kb-from-zero.zip
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# W10 demo 运行期产物：索引库 / LLM 缓存 / 调用留痕（本地派生，绝不入库）
+examples/state/
+
+# W10 demo 架构图：本地 matplotlib 生成供本机查看；privacy_scan.py L3 把所有
+# 图片/媒体一律判 BLOCK，所以不入库。README 用同结构的 Mermaid 文本图对外。
+examples/rag-demo-architecture.png

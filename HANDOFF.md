@@ -71,6 +71,50 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
    排除表要写全（见生产库 `snapshot.py` 的 `EXCLUDE_DIRS` 注释）。
 8. **CI 的 `--category` 过滤行为曾在并行窗口被改动**，导致基线 2 条 FAIL；
    合并前应跑备份对照，别把在途改动误判成自己的回归。
+9. **W9 · 双库副本会静默缺依赖**：`w9_human_label_pack.py` 在生产侧 `import judge_calibration`
+   正常，复制到本仓库后自测直接 `ModuleNotFoundError`（本仓库没有该模块）。
+   修法不是删 import，而是「优先 import 原版常量 + 镜像常量降级 + 自测做逐位一致性校验」，
+   保证两侧阈值不漂移。🔴 每次 `cp -r` 副本后，务必在**目标仓库**重跑一次全套 `--self-test`。
+10. **W9 · `privacy_scan.py --git-only` 扫不到未追踪的新文件**：CI 口径 0 BLOCK 只能证明
+    「已入库文件干净」，新加的 workflow / 脚本 / 文档根本没被扫到。本轮补跑全量
+    `--root . --no-assets` 才抓出新脚本里 4 处真实姓名（自定义词表 BLOCK）。
+    ⇒ 发版前必须**两份都跑**：全量看新增文件、`--git-only` 看真正会推的内容。
+11. **W9 · 全量扫描的既有 BLOCK 不等于本轮引入**：全量 49 条 BLOCK 全部落在
+    `modules/知识库索引/state/*.json`（本机运行时产物，含绝对路径），
+    `git ls-files` 显示该目录追踪文件数 = 0 ⇒ 不会外发。别为了「把数字压到 0」
+    去动别人的运行时产物（减法先过目），如实分口径记账即可。
+12. **W9 · Python `%` 格式化模板里的 CSS 裸 `%` 会炸**：`width:100%` 被当成格式符，
+    报 `ValueError: unsupported format character ';'`。HTML 模板用 `%` 插值时，
+    CSS 里的 `%` 必须写成 `%%`。
+13. **W9 · 编排器别为了绿放宽判据**：CI 侧没有生产 `ragas_metrics.json` 时
+    `eval_deepeval_gate.py` 正确返回 rc=4（输入缺失就该拦）。修法是编排器在**发起调用前**
+    判定「不具备条件 ⇒ SKIP」，而不是把脚本的 rc=4 改成 0 或吞掉 FAIL。
+
+9. **LlamaIndex 0.14 的 `BaseRetriever` 不是 pydantic 模型**：它自定义 `__init__`
+   （callback_manager / object_map / objects / verbose），用 `Field` 声明 `db_path` 会
+   `TypeError: unexpected keyword argument`。照 0.13 的印象写必翻车，真跑一次才暴露。
+10. **sqlite3 跨线程：只加串行锁不够**。`Ctx._conn` 是全局单连接，FastAPI 同步端点跑在
+   anyio 线程池 → `sqlite3.ProgrammingError: objects created in a thread can only be used in
+   that same thread`（实测 8 并发 24 请求 12~13 个 500；约一半请求恰好落在创建线程上才成功，
+   所以「有时能跑」最骗人）。正解两条同时满足：`connect(check_same_thread=False)`
+   **且** `_LOCK` 串行访问；用子类覆盖 `_ensure`，原版 `mcp_server.py` 一字不动。修复后 24/24 / 0 错误。
+11. **`file://` 双击的单文件 UI 必须开 CORS**（Origin 是 `null`）；服务只绑 `127.0.0.1` 时
+   `allow_origins=["*"]` 的暴露面仍限本机。不开＝「双击即用」直接废掉，curl 却测不出来。
+12. **隐私标记常量别手抄**：出口门禁要比对的是 `kb_rag.PRIVACY_EXPORT_MARK`
+   （`🔒【隐私内容·本机可检索，禁止外传/引用原文】`）。手写另一个字符串＝门禁静默失效，
+   典型的「目检幻觉」；一律从单一真相源读。
+13. **`privacy_scan.py` L3 把 `.png` / `.svg` 判 BLOCK**：架构图既要出图又不能让门禁变红，
+   走双轨——本地 matplotlib 生成 PNG（`.gitignore` 排除）+ README 用同结构 Mermaid 文本图对外。
+   **别为了让图过门禁去改安全护栏。**
+14. **`kw` 路是 OR 语义**：查不存在的词不会返回 0 条，而是 `coverage=0` 的擦边结果 + note 警示
+   （库主「库里有的不许说没有」）。别为了「0 条好看」去过滤；真 0 条（`substr` + 生僻串）才给 hint。
+15. **`import kb_rag` 只拉 jieba**：torch / transformers 都是函数内延迟加载。干净 venv 复现只需
+   `jieba + llama-index-core + fastapi + uvicorn`；漏 jieba 会**静默降级 bigram**，检索质量崩且不报错。
+16. **Git Bash 的 `/tmp` 与 Windows 版 Python 不互通**：`tee /tmp/x.json` 之后 Windows Python
+   读 `/tmp/x.json` 会 `FileNotFoundError`；取证文件统一落 F/E 盘的显式路径。
+17. **公开评测集弱标注满分 ≠ 引擎强**：query 取自 gold 文档标题时 R@5 / MRR 必然 1.000，
+   只证明链路通。已在 `examples/EVAL.md` 写死「不得用于简历数字 / 选型」，并解释原因——
+   诚实比一张漂亮的表重要。
 
 ## 7. 当前进行到哪 / 下一步做什么
 

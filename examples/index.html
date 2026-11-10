@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KB RAG Engine · 可复现 Demo</title>
+<style>
+  :root {
+    --bg: #f6f8fb; --card: #ffffff; --line: #e3e8ef; --ink: #1f2937;
+    --muted: #6b7280; --brand: #2563eb; --hi: #0a7c42; --mid: #b45309; --low: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 60px; background: var(--bg); color: var(--ink);
+    font-family: "Microsoft YaHei", "Microsoft YaHei UI", "msyh.ttc", "PingFang SC", sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type=text] {
+    flex: 1 1 320px; min-width: 220px; padding: 11px 13px; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 8px; outline: none; font-family: inherit;
+  }
+  input[type=text]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  select, button {
+    padding: 10px 14px; font-size: 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); font-family: inherit; cursor: pointer;
+  }
+  button { background: var(--brand); color: #fff; border-color: var(--brand); font-weight: 600; }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { opacity: .6; cursor: wait; }
+  .bar { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .bar b { color: var(--ink); font-weight: 600; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; margin-right: 5px; }
+  .dot.ok { background: #16a34a; } .dot.bad { background: #dc2626; }
+  .item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+  .item h3 { font-size: 16px; margin: 0 0 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rank { color: var(--muted); font-size: 13px; font-weight: 400; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; color: #fff; font-weight: 600; }
+  .b-hi { background: var(--hi); } .b-mid { background: var(--mid); } .b-low { background: var(--low); }
+  .score { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; color: var(--brand); word-break: break-all; }
+  .snippet { font-size: 13px; color: #374151; margin: 8px 0; }
+  .meta { font-size: 11px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+  .note { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a;
+          border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; }
+  .empty, .err { padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; font-size: 14px; }
+  .err { border-color: #fca5a5; color: #b91c1c; }
+  footer { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+  code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>KB RAG Engine · 可复现 Demo</h1>
+  <div class="sub">自研三链路检索引擎 ｜ LlamaIndex 适配器 ｜ 本地 REST ｜ 脱敏示例语料（不连生产库）</div>
+
+  <div class="panel">
+    <div class="row">
+      <input type="text" id="q" value="混合检索 RRF 融合怎么做" placeholder="输入检索问句…">
+      <select id="mode" title="检索模式">
+        <option value="kw">kw · 关键词</option>
+        <option value="fused">fused · 三链路融合</option>
+        <option value="substr">substr · 字级保底</option>
+        <option value="vec">vec · 语义</option>
+      </select>
+      <select id="topk" title="返回条数">
+        <option>3</option><option selected>5</option><option>10</option>
+      </select>
+      <button id="go">检索</button>
+    </div>
+    <div class="bar">
+      <span><span class="dot" id="dot"></span><span id="svc">服务检测中…</span></span>
+      <span>命中 <b id="nhit">—</b></span>
+      <span>服务端延迟 <b id="lat">—</b></span>
+      <span>端到端 <b id="e2e">—</b></span>
+      <span>参数快照 <b id="snap">—</b></span>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <footer>
+    只绑 127.0.0.1 · 生产检索不经过框架，适配器仅互操作/演示 ·
+    许可 KBL-1.0 · 署名 FallenPetal<br>
+    启动服务：<code>python modules/知识库索引/api_server.py</code>
+  </footer>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8788";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function bucket(score) {
+  const s = Number(score || 0);
+  if (s >= 0.6) return ["b-hi", "高相关"];
+  if (s >= 0.3) return ["b-mid", "中相关"];
+  return ["b-low", "低相关"];
+}
+
+function render(data, e2e) {
+  $("nhit").textContent = data.n_results;
+  $("lat").textContent = (data.params && data.params.elapsed_ms != null)
+    ? data.params.elapsed_ms + " ms" : "—";
+  $("e2e").textContent = e2e + " ms";
+  $("snap").textContent = data.params
+    ? [data.params.mode, "topk=" + data.params.topk, "db=" + data.params.db].join(" · ") : "—";
+  if (!data.results || !data.results.length) {
+    $("out").innerHTML = '<div class="empty">' + esc(data.hint || "库内未检索到相关内容（不编造）") + "</div>";
+    return;
+  }
+  const noteHtml = data.note
+    ? '<div class="note">引擎备注：' + esc(data.note) + '</div>' : "";
+  $("out").innerHTML = noteHtml + data.results.map(r => {
+    const [cls, label] = bucket(r.score);
+    return '<div class="item">'
+      + '<h3><span class="rank">#' + esc(r.rank) + '</span>' + esc(r.title)
+      + '<span class="badge ' + cls + '">' + label + '</span>'
+      + '<span class="score">score ' + esc(r.score) + '</span></h3>'
+      + '<div class="path">引用：' + esc(r.path) + '</div>'
+      + '<div class="snippet">' + esc(r.snippet) + '</div>'
+      + '<div class="meta"><span>覆盖率 coverage：' + esc(r.coverage) + '</span>'
+      + '<span>命中路 source：' + esc(r.source) + '</span>'
+      + '<span>category：' + esc(r.category) + '</span>'
+      + '<span>命中词 matched：' + esc((r.matched || []).join("、") || "—") + '</span></div>'
+      + '</div>';
+  }).join("");
+}
+
+async function run() {
+  const q = $("q").value.trim();
+  if (!q) { $("out").innerHTML = '<div class="err">query 不能为空</div>'; return; }
+  const url = API + "/search?q=" + encodeURIComponent(q)
+    + "&mode=" + encodeURIComponent($("mode").value)
+    + "&topk=" + encodeURIComponent($("topk").value);
+  $("go").disabled = true;
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error("HTTP " + res.status + "：" + (data.detail || "请求失败"));
+    render(data, Math.round(performance.now() - t0));
+  } catch (e) {
+    $("out").innerHTML = '<div class="err">' + esc(e.message)
+      + '<br>请先启动本地服务：<code>python modules/知识库索引/api_server.py</code></div>';
+  } finally { $("go").disabled = false; }
+}
+
+async function health() {
+  try {
+    const r = await fetch(API + "/health");
+    const d = await r.json();
+    $("dot").className = "dot ok";
+    $("svc").textContent = "服务在线 · db=" + d.db + " · LLM " + (d.llm_enabled ? "on" : "off");
+  } catch (e) {
+    $("dot").className = "dot bad";
+    $("svc").textContent = "服务未启动（127.0.0.1:8788）";
+  }
+}
+
+$("go").addEventListener("click", run);
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+health();
+run();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "oss-demo-v1",
+  "created": "2026-11-10",
+  "corpus": "examples/state/demo.db",
+  "label_type": "weak-auto",
+  "note": "query 取自各文档标题/正文里的关键词，gold 为该文档在仓库中的相对路径。这是可追溯的弱标注，不是人标；仅用于演示指标口径与回归冒烟，不得当作检索质量结论或模型选型依据。生产侧 184 条人标主集含隐私，不公开。",
+  "queries": [
+    {"q": "RRF 倒数排名融合", "expected": "docs/检索层设计与评测.md", "lang": "zh"},
+    {"q": "双链路体系 文件链路 索引链路", "expected": "docs/双链路体系.md", "lang": "zh"},
+    {"q": "架构总览 四区 真相源", "expected": "docs/架构总览.md", "lang": "zh"},
+    {"q": "技能工作台 提示词 卡片", "expected": "docs/技能工作台.md", "lang": "zh"},
+    {"q": "开源守则 KBL-1.0 许可", "expected": "docs/开源守则.md", "lang": "zh"},
+    {"q": "任务清单 并列任务依次执行", "expected": "docs/任务清单.md", "lang": "zh"},
+    {"q": "团队协作规范 交付流程", "expected": "docs/团队协作规范与交付流程.md", "lang": "zh"},
+    {"q": "使用指南 别人怎么用这个项目", "expected": "docs/使用指南.md", "lang": "zh"},
+    {"q": "从零到一搭建步骤 详细版", "expected": "docs/从零到一搭建步骤.md", "lang": "zh"},
+    {"q": "模块总览 可复用能力区", "expected": "docs/模块总览-示例.md", "lang": "zh"},
+    {"q": "复用副本不改原版 提示词资产", "expected": "templates/wiki/提示词资产/复用副本不改原版.example.md", "lang": "zh"},
+    {"q": "知识库检索 示例模块说明", "expected": "templates/wiki/可复用模块/检索.example.md", "lang": "zh"},
+    {"q": "GraphRAG 独立知识图谱子系统", "expected": "modules/知识图谱/README.md", "lang": "zh"},
+    {"q": "RAG Index Engine 混合检索", "expected": "modules/知识库索引/README.md", "lang": "zh"},
+    {"q": "Retrieval Layer RRF fusion", "expected": "docs/retrieval-engine.en.md", "lang": "en"},
+    {"q": "dual pipeline content index", "expected": "docs/dual-pipeline.en.md", "lang": "en"},
+    {"q": "Skill workbench prompts skills cards", "expected": "docs/skill-workbench.en.md", "lang": "en"},
+    {"q": "Architecture overview four zones", "expected": "docs/architecture.en.md", "lang": "en"}
+  ]
+}

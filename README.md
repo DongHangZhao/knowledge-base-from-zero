@@ -6,6 +6,13 @@
 ![python](https://img.shields.io/badge/python-3.10%2B-3776ab)
 ![deps](https://img.shields.io/badge/dependencies-zero-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![eval-ci](https://github.com/DongHangZhao/knowledge-base-from-zero/actions/workflows/eval-ci.yml/badge.svg)
+
+> **关于 `eval-ci` 徽章**：只表示「离线回归 + 评测门禁自测 + W9 五件套自测 + 隐私终审」在
+> **脱敏示例集**上跑过了。仓库侧**没有**生产 184 条主集与生产基线，`eval_gate` 本体与相对掉分判定
+> 在 CI 里是**明确 SKIP**，不是 PASS。徽章绿 ≠ 生产评测通过、≠ 可以发布；
+> 发布前仍须在本机带词表跑 `python tools/privacy_scan.py --git-only`。详见
+> [`docs/评测与可观测性-W9.md`](docs/评测与可观测性-W9.md)。
 
 > 一套可复用的「个人 / 团队知识库 + AI 外置大脑」搭建方法论与工具集。
 > 由作者长期自用的知识库体系提炼、**彻底去隐私化**后公开。
@@ -42,6 +49,66 @@
 > 🌐 **全部文档中英双语**：每篇正文顶部有「简体中文 ｜ English」切换，两版内容一一对应。
 > 英文版命名规则：根目录与 `kb-hub/` 用 `<原名>.en.md`；`docs/` 用语义化英文名（如 `architecture.en.md`）；`templates/` 用 `<原名>.en.md`。
 > 许可同样双语：[`LICENSE`](LICENSE)（英）／[`LICENSE.zh-CN.md`](LICENSE.zh-CN.md)（中）。
+
+---
+
+## 跑得起来的 RAG demo（5 条命令，不是方法论）
+
+> 仓库其余部分是方法论与模板；这一节是**能 clone 下来就跑通的全链路**：
+> 公开脱敏语料 → 自建索引 → 三种出口 → 带引用路径作答。
+> 完整步骤与逐条退出码见 [`examples/quickstart.md`](examples/quickstart.md)。
+
+```bat
+git clone https://github.com/DongHangZhao/knowledge-base-from-zero.git && cd knowledge-base-from-zero
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-demo.txt
+.venv\Scripts\python.exe examples/build_demo_index.py
+.venv\Scripts\python.exe examples/demo_llamaindex.py "RRF 融合怎么做"
+```
+
+### 架构
+
+```mermaid
+flowchart LR
+  A["① 脱敏语料<br/>仓库白名单内公开 Markdown<br/>条数以实跑输出为准 · 不注水"] --> B["② build_demo_index.py<br/>demo.db · SQLite FTS5"]
+  B --> C["③A LlamaIndex 适配器<br/>KBRetriever → NodeWithScore"]
+  B --> D["③B REST API · FastAPI<br/>/health /search /stats /ask"]
+  B --> E["③C index.html<br/>单文件双击即用"]
+  D -.-> F["④ /ask 默认 off<br/>出口门禁 → 缓存 → 留痕 → 降级"]
+```
+
+> 高清 PNG 版由 `examples/make_architecture.py` 本地绘制（matplotlib + 中文字体 msyh.ttc，
+> 图上数字全部来自真跑取证）。🔴 按 `tools/privacy_scan.py` L3 规则，图片一律禁止入 git，
+> 所以 PNG 只在本地、不入库；对外用上面这份 Mermaid 文本图（同一结构、可扫描、0 BLOCK）。
+
+### 为什么自研了引擎，还要写 LlamaIndex 适配器
+
+**引框架重写主检索链路是反模式**：自研三链路（FTS5 关键词 ⊕ BGE 语义 ⊕ 字级 substring → RRF 融合
+→ 精排）更可控、默认零外部调用，覆盖率治理和评测纪律也都在自己手里。这是技术判断，不推翻。
+
+**但求职是另一套评价**：JD 会写「熟悉 LangChain / LlamaIndex / Dify 至少一种」「有自己搭的知识库 demo」。
+所以补的是**适配层**，不是重写：`KBRetriever` 继承 `BaseRetriever`，`_retrieve()` 真调
+`kb_rag.search_unified`，把 `path / title / snippet / score / coverage` 映射成 `NodeWithScore`。
+一句「我自研检索引擎，同时写了 LlamaIndex 适配器」比纯自研更能说明**知道框架解决什么问题、也知道什么时候不用**。
+
+🔴 **适配器仅为互操作/演示，生产检索不经过框架。**
+
+### 交付物与本轮实测（2026-11-10）
+
+| 项 | 路径 | 取证 |
+|---|---|---|
+| 适配器 + 30 行 demo | `modules/adapters/llama_index_retriever.py`、`examples/demo_llamaindex.py` | 真跑带引用，`rc=0` |
+| REST（MCP 之外补双协议） | `modules/知识库索引/api_server.py`（由 `mcp_server.py` **cp 副本**改造） | `/health` `/search` `/stats` 真跑贴返回；原版 sha1 未变 |
+| 单文件 Web UI | `examples/index.html` | 预览地址 curl 回来字段比对 `html_missing=[]` |
+| 全链路 + 评测 | `examples/quickstart.md`、`eval_public.json`、`EVAL.md` | 干净目录复现见卡 §六 |
+| `/ask` LLM 能力 | 默认 `off`，一键可开 | 本地 mock 验通：缓存二次零调用、门禁 451、留痕无凭据 |
+
+- 并发基线（8 并发 × 24 请求）：**0 错误**，热态 p50 116.3ms / p95 157.7ms；
+  冷启动约 2.6s（首次加载引擎）。串行锁下的真实值，不外推。
+- 公开评测表 `examples/EVAL.md` 是**弱标注**集：R@5 / MRR 满分只说明链路通，
+  **不得当作检索质量结论、模型选型或简历数字**；理由见该文件。
+- 🔴 边界：不替换生产、不推生产 `kb.db` / 真实项目名 / 患者与个人数据；
+  服务只绑 `127.0.0.1`，不上云、不对外发布；许可 KBL-1.0、署名 FallenPetal。
 
 ---
 

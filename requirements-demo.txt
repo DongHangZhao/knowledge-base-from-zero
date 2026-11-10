@@ -1,0 +1,8 @@
+# W10 demo 的【可选】依赖：仅互操作层 / REST 服务 / Web UI 用得到。
+# 生产检索引擎（kb_rag.py CLI / MCP）零第三方依赖，不装这些也能跑。
+# 🔴 装包请走 F/E 盘（见 examples/quickstart.md），别让 C 盘增长。
+# jieba 是中文分词必需：缺了 kb_index 会静默降级 bigram，检索质量明显下降且不报错。
+jieba>=0.42
+llama-index-core>=0.12
+fastapi>=0.115
+uvicorn>=0.30
