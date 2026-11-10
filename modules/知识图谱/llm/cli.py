@@ -86,6 +86,15 @@ def cmd_selftest() -> int:
     res = llm_kit.chat("自测：只输出 ok", task="selftest", max_tokens=8)
     checks.append({"case": "degrade", "ok": res["degraded"] is True, "reason": res["reason"]})
 
+    # 6) W12 · D：提示词版本参与缓存键；不传版本时逐位兼容旧键，传不同版本必失效
+    k_old = llm_kit.cache_key("m", "s", "p")
+    k_v1 = llm_kit.cache_key("m", "s", "p", "v1")
+    k_v2 = llm_kit.cache_key("m", "s", "p", "v2")
+    checks.append({"case": "prompt_version",
+                   "ok": k_old != k_v1 and k_v1 != k_v2 and len(k_v1) == 24,
+                   "keys": [k_old, k_v1, k_v2],
+                   "note": "模板 hash 变 → 键变 → 旧缓存不命中，无需手工 drop"})
+
     bad = [c for c in checks if not c["ok"]]
     print(json.dumps({"passed": len(checks) - len(bad), "failed": len(bad), "checks": checks},
                      ensure_ascii=False, indent=2))

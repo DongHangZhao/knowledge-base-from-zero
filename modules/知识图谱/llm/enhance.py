@@ -59,6 +59,9 @@ _SYS_REW = (
     "要求：保留原意与专有名词，补全省略的主体，每条不超过 30 字，不要编造原文没有的实体。"
 )
 
+# W12 · D：模板内容即版本号 —— 改任何一句提示词，hash 变、缓存键变、旧结果自动失效。
+PROMPT_VERSION = llm_kit.prompt_version_of(_SYS_REL, _SYS_REW)
+
 
 def _parse_json(text: str):
     return llm_kit.extract_json(text)
@@ -69,7 +72,8 @@ def llm_relation(head: str, phrase: str, tail: str, context: str = "") -> dict:
     prompt = f"主语：{head}\n关系短语：{phrase}\n宾语：{tail}"
     if context:
         prompt += f"\n上下文（脱敏后）：{context[:300]}"
-    res = llm_kit.chat(prompt, system=_SYS_REL, task="relation", max_tokens=120)
+    res = llm_kit.chat(prompt, system=_SYS_REL, task="relation", max_tokens=120,
+                       prompt_version=PROMPT_VERSION)
     if not res["ok"]:
         return {**base, "degraded": True, "reason": res["reason"]}
     try:
@@ -87,7 +91,8 @@ def llm_relation(head: str, phrase: str, tail: str, context: str = "") -> dict:
 
 def llm_rewrite(query: str) -> dict:
     base = rule_rewrite(query)
-    res = llm_kit.chat(f"原查询：{query}", system=_SYS_REW, task="rewrite", max_tokens=200)
+    res = llm_kit.chat(f"原查询：{query}", system=_SYS_REW, task="rewrite",
+                       max_tokens=200, prompt_version=PROMPT_VERSION)
     if not res["ok"]:
         return {**base, "degraded": True, "reason": res["reason"]}
     try:
@@ -98,6 +103,10 @@ def llm_rewrite(query: str) -> dict:
         if not qs:
             raise ValueError("empty")
         merged = list(dict.fromkeys([query] + qs))[:4]
-        return {"queries": merged, "source": "llm", "degraded": False, "reason": "ok"}
+        # W12 · C：透传调用元信息，A/B 报表才能算缓存命中率与延迟增量
+        return {"queries": merged, "source": "llm", "degraded": False, "reason": "ok",
+                "cached": bool(res.get("cached")), "latency_ms": res.get("latency_ms"),
+                "prompt_version": PROMPT_VERSION}
     except (ValueError, KeyError, TypeError) as exc:
-        return {**base, "degraded": True, "reason": f"parse: {exc}"}
+        return {**base, "degraded": True, "reason": f"parse: {exc}",
+                "cached": bool(res.get("cached")), "latency_ms": res.get("latency_ms")}

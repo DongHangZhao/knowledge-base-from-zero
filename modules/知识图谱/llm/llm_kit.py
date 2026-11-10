@@ -56,6 +56,11 @@ def settings() -> dict:
         "timeout": float(_env("KG_LLM_TIMEOUT", default="30")),
         "retries": int(_env("KG_LLM_RETRIES", default="3")),
         "min_interval": float(_env("KG_LLM_MIN_INTERVAL", default="2.5")),
+        # W12 · D：缓存 TTL（秒），0 = 永不过期（默认，保证「关掉开关仍可复现」）。
+        "cache_ttl": float(_env("KG_LLM_CACHE_TTL", default="0")),
+        # W12 · D：提示词版本只由调用方显式传（见 prompt_version_of），默认空 = 键逐位不变，
+        # 不让别的窗口（hyde_cmd / w9_eval）已落盘的缓存一夜之间全失效。
+        "prompt_version_default": "",
         "cache_dir": str(CACHE_DIR),
         "trace_file": str(TRACE_FILE),
     }
@@ -81,9 +86,34 @@ _SOFT = [
 ]
 
 
+# 🔴 结构级硬拦（2026-11-10 加）：正则打不过**表格式实名明细**。
+#    起因：`raw/微信文件/项目/2026-11-09-26年10月多条手术的患者.xls` 修好读取后
+#    才进得了库（表头 `CASEID / OPERID / OPER_NAME / SURGEON / ASA / BEGINTIME`），
+#    60 行手术明细里没有一个「身份证」「手机号」「住院号：」字样 —— 现有 6 条正则
+#    一条都不命中。它照样能搜到、也照样能被送去外发。
+#    判据不看词，看**形状**：多行、每行 ≥3 个 Tab 分隔字段、表头出现实名/病案类主键。
+_ROSTER_KEYS = ("姓名", "患者", "病人", "学号", "工号", "CASEID", "病历", "住院号", "诊断")
+_ROSTER_MIN_ROWS = 6
+
+
+def _looks_like_roster(text: str) -> int:
+    """返回「多行表格行数」，0 = 不像实名明细表。"""
+    rows = 0
+    head_hit = False
+    for i, line in enumerate(text.splitlines()[:400]):
+        if line.count("\t") >= 2:
+            rows += 1
+            if i < 8 and any(k in line.upper() for k in _ROSTER_KEYS):
+                head_hit = True
+    return rows if (rows >= _ROSTER_MIN_ROWS and head_hit) else 0
+
+
 def prepare(text: str) -> dict:
     """出口前处理。返回 {text, redacted, hits}；硬拦抛 ExportBlocked。"""
     hard = [why for pat, why in _HARD if pat.search(text)]
+    n_rows = _looks_like_roster(text)
+    if n_rows:
+        hard.append("实名明细表（%d 行表格）" % n_rows)
     if hard:
         raise ExportBlocked("拒绝外发：" + "、".join(sorted(set(hard))))
     out, soft_hits = text, []
@@ -96,15 +126,40 @@ def prepare(text: str) -> dict:
 
 
 # ------------------------------------------------------------------- 缓存
-def cache_key(model: str, system: str, prompt: str) -> str:
-    raw = "\x00".join([model, system or "", prompt]).encode("utf-8")
+def prompt_version_of(*parts: str) -> str:
+    """W12 · D：把提示词模板本身做成版本号。
+
+    模板一改，hash 就变，缓存键随之变 —— 「改提示词自动失效」不靠手工 drop。
+    调用方显式传 chat(..., prompt_version=prompt_version_of(_SYS_A, _SYS_B))。
+    """
+    raw = "\x00".join(p or "" for p in parts).encode("utf-8")
+    return hashlib.sha1(raw).hexdigest()[:12]
+
+
+def cache_key(model: str, system: str, prompt: str, prompt_version: str = "") -> str:
+    """键 = model + system + prompt [+ prompt_version]。
+
+    🔴 兼容纪律：prompt_version 为空时拼串与改造前逐位一致（3 段），
+    保证既有缓存与其它窗口的回放不受影响；只有显式传版本才追加第 4 段。
+    """
+    parts = [model, system or "", prompt]
+    if prompt_version:
+        parts.append(prompt_version)
+    raw = "\x00".join(parts).encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:24]
 
 
-def cache_get(key: str) -> dict | None:
+def cache_get(key: str, ttl: float = 0.0) -> dict | None:
+    """ttl>0 时按缓存文件 mtime 判过期；默认 0 = 永不过期（可复现优先）。"""
     p = CACHE_DIR / f"{key}.json"
     if not p.exists():
         return None
+    if ttl > 0:
+        try:
+            if (time.time() - p.stat().st_mtime) > ttl:
+                return None
+        except OSError:
+            return None
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -170,18 +225,21 @@ def _post(url: str, body: dict, key: str, timeout: float) -> dict:
 
 
 def chat(prompt: str, system: str = "", task: str = "", *, temperature: float = 0.0,
-         max_tokens: int = 512) -> dict:
+         max_tokens: int = 512, prompt_version: str = "") -> dict:
     """单轮补全。返回统一结构，**任何失败都不抛给调用方**（降级而非中断，§5 L2）。
 
     {ok, text, degraded, cached, reason, latency_ms, usage}
+    prompt_version: W12 · D，由调用方用 prompt_version_of(模板...) 显式传入；
+                    空 = 兼容旧键（不传版本的历史调用仍命中原缓存）。
     """
     cfg = settings()
-    key = cache_key(cfg["model"], system, prompt)
+    key = cache_key(cfg["model"], system, prompt, prompt_version)
     t0 = time.perf_counter()
 
-    if cached := cache_get(key):
+    if cached := cache_get(key, cfg["cache_ttl"]):
         trace({"task": task, "model": cfg["model"], "cache_key": key,
                "cached": True, "degraded": False, "latency_ms": 0,
+               "prompt_version": prompt_version,
                "prompt_chars": len(prompt)})
         return {**cached, "ok": True, "cached": True, "degraded": False,
                 "reason": "cache", "latency_ms": 0, "cache_key": key}
@@ -221,8 +279,9 @@ def chat(prompt: str, system: str = "", task: str = "", *, temperature: float = 
             ms = int((time.perf_counter() - t0) * 1000)
             trace({"task": task, "model": payload["model"], "cache_key": key,
                    "cached": False, "degraded": False, "latency_ms": ms,
-                   "prompt_chars": len(prompt), "redacted": safe["redacted"],
-                   "usage": payload["usage"], "attempt": attempt + 1})
+                   "prompt_version": prompt_version, "redacted": safe["redacted"],
+                   "prompt_chars": len(prompt), "usage": payload["usage"],
+                   "attempt": attempt + 1})
             return {**payload, "ok": True, "cached": False, "degraded": False,
                     "reason": "ok", "latency_ms": ms, "cache_key": key}
         except urllib.error.HTTPError as exc:

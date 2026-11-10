@@ -398,14 +398,32 @@ def main(argv=None):
             selftest_rc, selftest_out = st.returncode, (st.stdout or "")[-400:]
         except (OSError, subprocess.SubprocessError) as exc:
             selftest_out = f"selftest 无法执行：{exc}"
-    llm_ok = len(have_llm) == len(need_llm) and selftest_rc == 0
+    # W12 · A：C7 扩判「在线入口零引用」—— 真跑守卫，不靠自述。
+    # 判据前提：只扫在线入口；离线批处理/评测工具复用 llm_kit 属正常，不算违规。
+    guard_rc, guard_out = None, ""
+    guard_py = os.path.join(llm_dir, "llm_path_guard.py")
+    if os.path.isfile(guard_py):
+        try:
+            g = subprocess.run([sys.executable, guard_py, "--json"],
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=60)
+            guard_rc, guard_out = g.returncode, (g.stdout or "")[-400:]
+        except (OSError, subprocess.SubprocessError) as exc:
+            guard_out = f"守卫无法执行：{exc}"
+    guard_ok = guard_rc == 0
+    llm_ok = len(have_llm) == len(need_llm) and selftest_rc == 0 and guard_ok
     add("C7-LLM能力层", "PASS" if llm_ok else "BLOCKED",
-        "LLM 环节已建成可运行代码，默认 off；关掉开关自测全过（不联网），开启后实跑过并有对照证据。",
-        "五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ 默认 enabled=false + "
+        "LLM 环节已建成可运行代码，默认 off；在线入口零引用；关掉开关自测全过（不联网），开启后实跑过并有对照证据。",
+        "五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ llm_path_guard.py rc=0"
+        "（kb_rag/kb_index/检索服务零 import llm_kit）+ 默认 enabled=false + "
         "A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt）",
-        [f"llm/{f}" for f in have_llm] + ["state/llm_ab_20261109_133003.json",
-                                          "state/b3_llm_review_20261109_133309.json",
-                                          "state/llm_trace.jsonl"])
+        [f"llm/{f}" for f in have_llm] +
+        ["llm/llm_path_guard.py（本轮 rc=%s）" % guard_rc,
+         "state/llm_ab_20261109_133003.json",
+         "state/b3_llm_review_20261109_170902.json",
+         "state/llm_trace.jsonl"])
+    if guard_out and guard_rc != 0:
+        print("守卫输出（BLOCK 时回显）：%s" % guard_out)
     if missing:
         add("C0-证据完整性", "BLOCKED", "缺少证据文件：" + ", ".join(missing),
             "6 份证据 JSON 必须齐", missing)

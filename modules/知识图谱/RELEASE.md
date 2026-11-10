@@ -17,7 +17,7 @@
 | C4-评测校准 | **LIMITED** | 统计不确定性已量化（Wilson 区间 + 配对 delta 95%CI）；人标 0 条，数字仍不可当公开评测用 | human_judged=0 → 只允许 LIMITED；校准包已生成且责任人=库主；30 条不足以做 PPI |
 | C5-语料规模 | **PASS** | 34 篇定位为 demo-scale 方法验证，pin 到 corpus snapshot digest；不切块充数 | 题库 sha1 与语料清单 sha1 一并登记；规模不足的原因写明为红线代价 |
 | C6-隐私门禁 | **PASS** | 词表版本化 + 机读 gate（files_scanned>0 且 block=0）+ 疑似专名建议交人审 | rc=0 且 files_scanned>0，防 0 文件假通过；对外发布另列需许可项 |
-| C7-LLM能力层 | **PASS** | LLM 环节已建成可运行代码，默认 off；关掉开关自测全过（不联网），开启后实跑过并有对照证据。 | 五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ 默认 enabled=false + A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt） |
+| C7-LLM能力层 | **PASS** | LLM 环节已建成可运行代码，默认 off；在线入口零引用；关掉开关自测全过（不联网），开启后实跑过并有对照证据。 | 五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ llm_path_guard.py rc=0（kb_rag/kb_index/检索服务零 import llm_kit）+ 默认 enabled=false + A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt） |
 
 ## 决策项（已执行的回填事实 / 未执行的仍归库主）
 
@@ -58,14 +58,14 @@
 ## LLM 能力层（C7 证据，默认 `KG_LLM_ENABLED=0`）
 
 - 关系判定对照（n=10，gold 人工判定，仅描述性不作显著性断言）：规则 **0.30** → LLM **0.70**（+40.0pp），降级调用 0 次。`state/llm_ab_20261109_133003.json`
-- B3 边质检（抽样 12/41）：LLM 有效判定 12 条，其中判为无效碎片边 **11** 条。`state/b3_llm_review_20261109_133332.json`
+- B3 边质检（抽样 41/41）：LLM 有效判定 39 条，其中判为无效碎片边 **32** 条。`state/b3_llm_review_20261109_170902.json`
 - 关掉开关后同一批输入重放：命中缓存、结论逐条一致（`state/llm_trace.jsonl` 可核）。「不建」仅限 C4/题面/gt 三处（方法论禁止模型自证），其余环节一律必须有代码。
 
 ## Provenance（可复算）
 
 - 语料快照：`corpus/manifest.json` sha1 `a6a58abeaede`，33 篇 / 565 块。
 - 题库：`eval_sets/kg_multihop_v2026.11.json` sha1 `8f6b89260364`。
-- 原版脚本 7 个 sha1（历史基线 2026-11-06）：外部变动 1 个（非本轮，见下段）：kb_rag.py 2a5dc28c362f→bb7197876b61。
+- 原版脚本 7 个 sha1（历史基线 2026-11-06）：外部变动 2 个（非本轮，见下段）：kb_rag.py 2a5dc28c362f→f9025290fb46, kg_terms.py a09e52311ed8→6af683fe2f31。
 - 产物 sha1（4 HTML + 2 JSON）：见 `release_manifest.json::provenance.subject`。
 - 写隔离探针：`kg_build.py --stats` 真跑 rc=0，生产 `kb.db` 前后一致=True，变更文件 2 个且全在本目录。
 
@@ -73,7 +73,8 @@
 
 ### 本轮发现的外部变动（如实记账，不回滚）
 
-- `kb_rag.py`：历史基线 `2a5dc28c362f` → 现值 `bb7197876b61`，mtime `2026-11-07 07:10:16`；非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实。
+- `kb_rag.py`：历史基线 `2a5dc28c362f` → 现值 `f9025290fb46`，mtime `2026-11-09 17:29:08`；非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实。
+- `kg_terms.py`：历史基线 `a09e52311ed8` → 现值 `6af683fe2f31`，mtime `2026-11-10 23:53:48`；非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实。
 🔴 跨窗口改动**静态快照发现不了**，这正是本闸门存在的理由。本轮不回滚、不擅自改生产脚本（回滚需库主许可），只登记并交库主核实。
 
 ## 业界参考（标题 + URL + 访问日期）

@@ -1,7 +1,7 @@
 {
   "schema": "w6-release-attestation/v1",
   "inspired_by": "SLSA L1 provenance + golden-set calibration + secret-scan baseline gate (判据借用，实现为本地纯标准库；无签名、无云端、无外部服务)",
-  "verified_at": "2026-11-09 16:46:26",
+  "verified_at": "2026-11-11 00:37:52",
   "overall": "PASS_WITH_WAIVERS",
   "blocked_checks": [],
   "provenance": {
@@ -36,6 +36,7 @@
         "build_corpus.py": "c933cea7e32b",
         "build_kg_viz.py": "47760eed0b5f",
         "eval_multihop.py": "46ee5fe11cbd",
+        "export_full_graph.py": "3629997c660d",
         "export_kg_graph.py": "4f6420f68847",
         "kg_build.py": "d383394a9fe7",
         "kg_extract.py": "a534fde22978",
@@ -43,7 +44,8 @@
         "kg_ppr.py": "6ac7acce89ca",
         "kg_search.py": "f775429fd8cf",
         "kg_terms.py": "a09e52311ed8",
-        "release_verify.py": "eecf637f94ac",
+        "release_verify.py": "887c0061af8b",
+        "sync_to_kb_from_zero.py": "597befedcff8",
         "viz_export.py": "9f0da7febc1a"
       },
       "originals_history_baseline_2026_11_06": {
@@ -56,11 +58,11 @@
         "export_kg_graph.py": "4f6420f68847"
       },
       "originals_current": {
-        "kb_rag.py": "bb7197876b61",
+        "kb_rag.py": "f9025290fb46",
         "kg_extract.py": "a534fde22978",
         "kg_gate.py": "2b79ec2052a2",
         "kg_ppr.py": "5c333ee1329e",
-        "kg_terms.py": "a09e52311ed8",
+        "kg_terms.py": "6af683fe2f31",
         "build_kg_viz.py": "47760eed0b5f",
         "export_kg_graph.py": "4f6420f68847"
       },
@@ -68,8 +70,15 @@
         {
           "file": "kb_rag.py",
           "history_baseline_2026_11_06": "2a5dc28c362f",
-          "current": "bb7197876b61",
-          "mtime": "2026-11-07 07:10:16",
+          "current": "f9025290fb46",
+          "mtime": "2026-11-09 17:29:08",
+          "attribution": "非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实"
+        },
+        {
+          "file": "kg_terms.py",
+          "history_baseline_2026_11_06": "a09e52311ed8",
+          "current": "6af683fe2f31",
+          "mtime": "2026-11-10 23:53:48",
           "attribution": "非 W6 子系统写入；并行窗口改动（目录内有同名 .bak-20261107-W8-pre 备份），本轮不回滚、不擅自改，仅登记待库主核实"
         }
       ],
@@ -78,7 +87,7 @@
         "edges": 5806,
         "covered_docs": 34,
         "covered_chunks": 566,
-        "build_elapsed_s": 0.697,
+        "build_elapsed_s": 0.802,
         "b1_synonym_edges": 0,
         "b1_synonym_tagged_edges": 2,
         "b2_passage_nodes": 566,
@@ -381,16 +390,17 @@
     {
       "id": "C7-LLM能力层",
       "status": "PASS",
-      "statement": "LLM 环节已建成可运行代码，默认 off；关掉开关自测全过（不联网），开启后实跑过并有对照证据。",
-      "criterion": "五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ 默认 enabled=false + A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt）",
+      "statement": "LLM 环节已建成可运行代码，默认 off；在线入口零引用；关掉开关自测全过（不联网），开启后实跑过并有对照证据。",
+      "criterion": "五件套齐 + cli.py --selftest rc=0（KG_LLM_ENABLED 不设）+ llm_path_guard.py rc=0（kb_rag/kb_index/检索服务零 import llm_kit）+ 默认 enabled=false + A/B 与 B3 质检落盘；「不建」只允许用于方法论禁止模型自证的环节（C4/题面/gt）",
       "evidence": [
         "llm/llm_kit.py",
         "llm/enhance.py",
         "llm/cli.py",
         "llm/b3_review.py",
         "llm/README.md",
+        "llm/llm_path_guard.py（本轮 rc=0）",
         "state/llm_ab_20261109_133003.json",
-        "state/b3_llm_review_20261109_133309.json",
+        "state/b3_llm_review_20261109_170902.json",
         "state/llm_trace.jsonl"
       ]
     }

@@ -32,6 +32,9 @@ _SYS = (
     '{"valid": true/false, "type": "属于|用于|依赖|导致|包含|相关", "confidence": 0到1, "why": "不超过20字"}'
 )
 
+# W12 · D：模板 hash 即提示词版本，改模板自动让旧缓存失效。
+PROMPT_VERSION = llm_kit.prompt_version_of(_SYS)
+
 
 def load_typed(limit: int) -> list[dict]:
     with GRAPH.open("rb") as fh:
@@ -47,7 +50,8 @@ def load_typed(limit: int) -> list[dict]:
 
 def review(row: dict) -> dict:
     prompt = f"主语：{row['head']}\n关系：{row['rel']}\n宾语：{row['tail']}"
-    res = llm_kit.chat(prompt, system=_SYS, task="edge_valid", max_tokens=220)
+    res = llm_kit.chat(prompt, system=_SYS, task="edge_valid", max_tokens=220,
+                       prompt_version=PROMPT_VERSION)
     if not res["ok"]:
         # 降级：不在模型缺席时假装判定过，明确标 rule_fallback
         return {**row, "valid": None, "type": None, "confidence": None,
