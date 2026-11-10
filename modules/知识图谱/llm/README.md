@@ -67,7 +67,8 @@ KG_LLM_ENABLED=1 "$PY" b3_review.py --limit 12
 "$PY" llm_path_guard.py --selftest          # 故意插 import 验证能判 BLOCK（临时目录，不碰真文件）
 "$PY" b3_audit.py                           # 41/41 审计 + 边属性写回 + 关开关复跑一致
 "$PY" rewrite_ab.py --prepare --n 50        # 冻结题集生成改写候选（逐条落盘，可断点）
-"$PY" rewrite_ab.py --eval                  # paired R@5 + McNemar p + 延迟增量
+"$PY" rewrite_ab.py --eval                  # paired R@5 + McNemar p + 延迟增量（默认关精排，两臂同配置）
+"$PY" rewrite_ab.py --eval --rerank         # 开精排：索引 13.9 万块时单条 13–31s，且实测会崩（见已知限制 7）
 "$PY" report.py                             # 命中率 / 成本报表 → state/llm_cost_report.json
 "$PY" rate_probe.py                         # 历史 429 证据（零网络）
 "$PY" rate_probe.py --run --burst 6         # 真压测（消耗配额）
@@ -92,6 +93,7 @@ KG_LLM_ENABLED=1 "$PY" b3_review.py --limit 12
 | B3 写回 | 只加 `llm_valid/llm_conf/llm_reason`，前后 `(u,v,kind)` 拓扑签名一致；关开关复跑 rows sha1 一致 | `state/b3_audit_gate.json` 4/4 |
 | **429 / 超时压测（2026-11-11 00:32 真跑）** | 6 连发：成功 4 / **超时 2（30s TimeoutError）** / **429 共 0 次**；耗时 73s | `state/llm_rate_probe.json` |
 | 缓存与成本报表 | 按 task 出命中率 / p50·p90 / 降级率 / tokens；TTL=0 | `state/llm_cost_report.json` |
+| **改写 A/B（2026-11-11 01:34，n=50 冻结人标题面）** | 规则 **0.580** → LLM **0.580**（+0.00pp）；配对 24/16/5/5；McNemar **p=1.0 ⇒ 记平**；LLM 改写 p50 **3.52s** / p90 **23.0s**；快照 `stable=true` | `state/rewrite_ab_20261111_013403.json` |
 | 关掉开关重放 | 同一输入不联网，结论逐条一致（先查缓存再判开关） | `b3_audit.py --verify` 子进程 sha1 一致 |
 
 🔴 **别把「8 连发即 429」当常量**：那是 2026-11-09 的经验值；本轮 6 连发先出现的是**超时**而不是 429，
@@ -106,7 +108,12 @@ KG_LLM_ENABLED=1 "$PY" b3_review.py --limit 12
 4. **不自动改图 / 不自当金标**：LLM 判定只落 JSON 供人审；C4 / 题面 / gt 三处不建（方法论禁止模型自证）。
 5. **缓存目录在 `state/`**：已 gitignore，不进版本库、不上传。
 6. **改写 A/B 的 p 值**：题集冻结、gt 人工，LLM 改写不得自当裁判；未达 p<0.05 就如实记平，
-   **不许拿「收益不明显」砍能力**（§5.11）。
+   **不许拿「收益不明显」砍能力**（§5.11）。本轮结果即 **p=1.0 记平**。
+7. **跑评测前先确认索引没在重建**：2026-11-11 01:18 实测——并行窗口把索引从 4.4 万块重建到
+   13.9 万块，`load_bge()` 走热重载路径直接段错误（**rc=139**）；开精排重跑又在第 4 条崩（**rc=127**）。
+   所以 `rewrite_ab.py` 内置**快照守卫**（跑前跑后比对 `built_at` / `chunks` / `docs`）：
+   指纹不一致会写 `rewrite_ab_INVALID_*.json` 并在结论里标「数字不可用」。看到 `INVALID_` 就重跑，别抄里面的数。
+   逐条进度落 `state/rewrite_ab_partial.json`（键含指纹 + 检索配置），中断后重跑从断点续，不重复烧钱。
 
 ## 复用
 

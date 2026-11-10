@@ -151,21 +151,27 @@ def path_hit(paths, gt) -> bool:
     return False
 
 
-def evaluate() -> dict:
+def evaluate(rerank: bool = False) -> dict:
+    """rerank：默认 False。🔴 为什么默认关（2026-11-11 实测）：索引 4.4 万 → 13.9 万块后，
+    开精排单条检索 13–31s，50 条两臂要 30+ 分钟，且连续两次在同一位置崩（rc=139 / rc=127）。
+    关精排后两臂配置仍然**完全一致**，配对设计不受影响；口径写进报告 `retrieval_config`，
+    不靠读者猜。
+    """
     doc = load_json(CAND, None)
     if not doc or not doc.get("items"):
         raise RuntimeError("缺候选文件，请先跑 --prepare")
     snap0 = snapshot_probe()
+    key = {**snap0, "rerank": bool(rerank)}
     sys.path.insert(0, str(IDX))
     import kb_index  # noqa: E402
     import kb_rag  # noqa: E402
 
-    # 逐条落盘：断点续跑 + 同快照才复用（换快照就整段作废重跑）
-    part = load_json(PARTIAL, {"snapshot": snap0, "rows": {}})
-    if part.get("snapshot") != snap0:
-        print("[ab] 索引指纹变了，旧进度作废重跑（%s → %s）"
-              % (part.get("snapshot"), snap0), file=sys.stderr)
-        part = {"snapshot": snap0, "rows": {}}
+    # 逐条落盘：断点续跑 + 同快照同口径才复用（换快照或换口径就整段作废重跑）
+    part = load_json(PARTIAL, {"key": key, "rows": {}})
+    if part.get("key") != key:
+        print("[ab] 索引指纹或检索口径变了，旧进度作废重跑（%s → %s）"
+              % (part.get("key"), key), file=sys.stderr)
+        part = {"key": key, "rows": {}}
 
     conn = kb_index.connect()
     rows = []
@@ -181,7 +187,7 @@ def evaluate() -> dict:
                 q = qs[1] if len(qs) > 1 else qs[0]
                 t0 = time.perf_counter()
                 res, _note = kb_rag.search_unified(conn, q, topk=5, mode="fused",
-                                                   rerank=True, rewrite="off")
+                                                   rerank=rerank, rewrite="off")
                 ms = round((time.perf_counter() - t0) * 1000, 2)
                 return q, path_hit([r.get("path", "") for r in res], c["gt"]), ms
 
@@ -230,6 +236,9 @@ def evaluate() -> dict:
         "selection": "按冻结集原序取 gt 非空者；题面与 gt 均非 LLM 生成",
         "snapshot": {"before": snap0, "after": snap1, "stable": stable,
                      "why": "库在跑的过程中被重建 ⇒ 两臂语料不同源，数字作废（不信「跑完就算数」）"},
+        "retrieval_config": {"mode": "fused", "rerank": bool(rerank), "rewrite": "off",
+                             "why": "两臂检索配置必须逐位一致；关精排是为可跑完（索引 13.9 万块时"
+                                    "开精排单条 13–31s 且连续崩），不影响配对比较"},
         "n": n,
         "paired": {"both_hit": both, "neither": neither,
                    "llm_only": llm_only, "rule_only": rule_only,
@@ -271,6 +280,8 @@ def main() -> int:
     g.add_argument("--eval", action="store_true")
     ap.add_argument("--n", type=int, default=50, help="题集条数（50–100），默认 50")
     ap.add_argument("--limit", type=int, default=0, help="本轮最多新生成 N 条（断点续跑）")
+    ap.add_argument("--rerank", action="store_true",
+                    help="开精排（慢且易崩，默认关；两臂始终同配置）")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     if a.n < 50 or a.n > 184:
@@ -278,7 +289,7 @@ def main() -> int:
         return 2
 
     try:
-        rep = prepare(a.n, a.limit) if a.prepare else evaluate()
+        rep = prepare(a.n, a.limit) if a.prepare else evaluate(a.rerank)
     except (FileNotFoundError, RuntimeError, ImportError) as exc:
         print("A/B 失败（如实报，不降级成假结论）：%s" % exc, file=sys.stderr)
         return 3
@@ -296,6 +307,9 @@ def main() -> int:
         print("结论：%s" % rep["verdict"])
         print("快照：stable=%s · before=%s · after=%s"
               % (rep["snapshot"]["stable"], rep["snapshot"]["before"], rep["snapshot"]["after"]))
+        print("检索口径：mode=%s rerank=%s rewrite=%s（两臂一致）"
+              % (rep["retrieval_config"]["mode"], rep["retrieval_config"]["rerank"],
+                 rep["retrieval_config"]["rewrite"]))
         print("延迟：LLM 改写 p50/p90 %s/%s ms · 检索增量 p50 %s ms · 缓存命中率 %s"
               % (rep["latency"]["llm_rewrite_p50_ms"], rep["latency"]["llm_rewrite_p90_ms"],
                  rep["latency"]["retrieval_delta_p50_ms"], rep["cache"]["hit_rate"]))
