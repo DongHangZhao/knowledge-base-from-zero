@@ -7,5 +7,5 @@
 --requirements python3==3.11.9,hostpython3==3.11.9
 --port 8799
 --permission INTERNET
---orientation sensor
+--orientation landscape
 --arch arm64-v8a
