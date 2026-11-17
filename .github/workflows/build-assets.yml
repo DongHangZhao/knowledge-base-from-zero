@@ -87,6 +87,10 @@ jobs:
   android-apk:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    env:
+      # pyjnius 的隔离 wheel 构建环境默认不带 Cython（hostpython 3.14 + p4a pip 路径），
+      # 关掉构建隔离让它复用 requirements 里装好的 cython==3.0.11。
+      PIP_NO_BUILD_ISOLATION: "1"
     steps:
       - uses: actions/checkout@v4
         with:
