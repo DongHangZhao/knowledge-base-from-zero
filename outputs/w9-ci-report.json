@@ -1,0 +1,81 @@
+{
+  "checked_at": "2026-11-11T00:15:57",
+  "repo": "~/example-kb/kb-from-zero",
+  "mode": "offline-ci（零外部 API、零上传、零 push）",
+  "n_pass": 8,
+  "n_fail": 0,
+  "n_skip": 2,
+  "skips": [
+    {
+      "name": "eval_gate.py（检索质量门禁本体）",
+      "reason": "仓库侧只有脱敏示例集 multihop_30.example.json，没有冻结主集 eval_sets/manifest.json 与生产索引库；🔴 卡片 D 明令「别把生产 184 条含真实业务 query 推上去」。直接跑必然 rc=2，故记 SKIP 而不是假绿",
+      "not_pass": true
+    },
+    {
+      "name": "eval_deepeval_gate.py --ci（相对掉分判定）",
+      "reason": "公开 CI 不含生产 ragas_metrics.json 与生产基线（按卡片 D 只推脱敏示例）；不具备判定条件 ⇒ SKIP。🔴 未把任何 FAIL 洗成 SKIP：脚本输入缺失时仍 rc=4 硬拦，本编排器只是不发起这一步",
+      "not_pass": true
+    }
+  ],
+  "results": [
+    {
+      "name": "run_tests.py --ci",
+      "cmd": "python.exe run_tests.py --ci",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "-------------------------------------------------------------- | 套件 15/15 通过 · 断言 287/287 · 总耗时 98.1s | （--ci：跳过看板写盘）"
+    },
+    {
+      "name": "eval_gate.py --self-test",
+      "cmd": "python.exe eval_gate.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] 缺桶 rc 应为 4 → 实得 4｜缺桶 ['G']（相对基线 test） | [PASS] 尺子条数/bucket 坏掉 rc 应非 0 → 实得 4 | [PASS] 首版无基线 → rc 0 且明说「不判定」｜实得 0｜['首版基线：本次只存不判（不视为 PASS）']"
+    },
+    {
+      "name": "eval_ragas_adapter.py --self-test",
+      "cmd": "python.exe eval_ragas_adapter.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] 分层抽样每桶 2 条                                     got=True expect=True | [PASS] claim 档可运行｜local=0.6000 claim=0.5000 差值=-0.1000 | [INFO] 校准状态（只读 status.json）= UNKNOWN｜生成侧标 ⏳=True"
+    },
+    {
+      "name": "eval_deepeval_gate.py --self-test",
+      "cmd": "python.exe eval_deepeval_gate.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] 脱敏示例集识别为 ci-example                                  got=True expect=True | [PASS] 普通产物不误判为示例集                                          got=False expect=False | 结果：全 PASS"
+    },
+    {
+      "name": "w9_human_label_pack.py --self-test",
+      "cmd": "python.exe w9_human_label_pack.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] 未校准 ⇒ 简历不可用                                          got=True expect=True | [PASS] 伪造 gold 被抓到                                          got=False expect=False | 结果：全 PASS"
+    },
+    {
+      "name": "w9_observability.py --self-test",
+      "cmd": "python.exe w9_observability.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] spanId 16 hex 且互异                                  got=5 expect=5 | [PASS] 同 trace 内 parent 一致                                got=True expect=True | 结果：全 PASS"
+    },
+    {
+      "name": "w9_gt_traceability.py --self-test",
+      "cmd": "python.exe w9_gt_traceability.py --self-test",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "[PASS] 空路径不追溯 | [PASS] 缺失路径 0 块 | 结果：全 PASS"
+    },
+    {
+      "name": "privacy_scan.py --git-only",
+      "cmd": "python.exe privacy_scan.py --root kb-from-zero --git-only --no-assets",
+      "rc": 0,
+      "verdict": "PASS",
+      "output_tail": "上下文: 不在文本/二进制白名单内 | -------------------------------------------------------------------- | ✅ 干净：可以发布（另有 1 条 WARN 需人工确认）"
+    }
+  ],
+  "badge_eligible": true,
+  "rule": "SKIP 单列、不算 PASS；FAIL 绝不洗成 SKIP。badge 绿只代表「所有能真跑的项都跑过了」，不代表生产评测已通过",
+  "verdict": "PASS_WITH_SKIPS"
+}

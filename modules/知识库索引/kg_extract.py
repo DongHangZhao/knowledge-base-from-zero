@@ -24,7 +24,7 @@
     KB_KG=1 python kg_extract.py --limit 100        # 只处理前 100 个未建侧表的 chunk
     KB_KG=1 python kg_extract.py --rebuild          # 清空侧表重建（显式操作）
 
-作者：FallenPetal ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
+作者：落花飞雪· ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
 """
 
 import argparse

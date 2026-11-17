@@ -6,7 +6,7 @@
 ## 1. 一句话说清这是什么
 
 一个**去隐私化的开源知识库搭建体系**（方法论 + 门户 + 检索引擎 + 知识图谱 + 中英双语文档），
-许可 KBL-1.0，署名 FallenPetal；用 Git 管版本，用 CI 管验收。
+许可 KBL-1.0，署名 落花飞雪·；用 Git 管版本，用 CI 管验收。
 
 ## 2. 当前状态（2026-11-10）
 
@@ -131,3 +131,19 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - `docs/decisions/KG-41.md`、`docs/decisions/RW-39.md`：图谱与检索层既有决策。
 - 决策解释义务：每个非平凡动作都要说清「为何做 / 为何这样 / 边界 / 怎么验 / 何时停」；
   写不出理由的决策大概率没想过。
+
+## 9. 已踩过的坑（W15 · 2026-11-17 追加）
+
+- **跨库修复不同步 = 门禁假红**：W14 的 `use_cache` 修复只落在生产库、没同步到本发布仓库，
+  导致本仓库 selftest 一直 8/1（`reason=cache`）。诊断别在本仓库代码里找 bug，先 diff 两库同文件：
+  生产库已修、仓库未同步。同步后 off 前提 9/9、RC=0。
+- **扫描快照本身是泄露源**：`outputs/w9-privacy-full.json` 存的是全库扫描结果，把命中的真实姓名、
+  公司、项目名嵌进了 `context` 字段。`--git-only` 显示 0 BLOCK 只是因为这几个 JSON **未被跟踪**——
+  一旦 `git add outputs/` 立刻变 14 BLOCK。发布前必须先脱敏（真实词换中性示例）再入库。
+  2026-11-17 库主裁决：full 快照脱敏后仍留 `block:49`/hits 结构（元信息暴露、展示价值低），
+  **直接排除**（移库外 + `.gitignore` 条目）；只保留脱敏后的 `w9-privacy-git.json`/`w9-ci-report.json` 入库。
+- **脱敏备份别留在仓库目录**：为脱敏做的 `.bak-*` 若放在 `outputs/` 下，含原始 PII，会被
+  `git add outputs/` 一并带走，脱敏白做。备份一律移出仓库到库外临时区。
+- **JSON 内反斜杠是双写的**：脱敏脚本替换 Windows 绝对路径时，磁盘文本里的单个 `\` 实际是 `\\`
+  （2 个反斜杠字符），字面量少写一个就不命中，复扫还报 BLOCK。替换后必须真跑门禁复扫验 0 BLOCK，
+  不能只看脚本 changed=True。

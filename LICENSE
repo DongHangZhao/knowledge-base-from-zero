@@ -2,7 +2,7 @@ Knowledge Base From Zero Open License, Version 1.0 (KBL-1.0)
 知识库从零到一开源许可 第 1.0 版
 
 Project : knowledge-base-from-zero — 知识库搭建体系（从零到一）
-Copyright (c) 2026 FallenPetal
+Copyright (c) 2026 落花飞雪·
 SPDX-License-Identifier: LicenseRef-KBL-1.0
 
 This license is a source-available, noncommercial license with a mandatory
@@ -19,7 +19,7 @@ redistribute anything in this repository.
     templates, configuration, images, and any other material — together with
     any portion of them.
 
-1.2 "Licensor" means FallenPetal, the copyright holder of the Work.
+1.2 "Licensor" means 落花飞雪·, the copyright holder of the Work.
 
 1.3 "You" means any individual or legal entity exercising rights under this
     License.
@@ -72,7 +72,7 @@ No rights are granted for Commercial Purposes except as set out in Section 5.
     of the Work must carry a clear, human-readable Attribution Notice stating:
 
       (a) the project name: knowledge-base-from-zero（知识库搭建体系·从零到一）;
-      (b) the author: FallenPetal;
+      (b) the author: 落花飞雪·;
       (c) the license: KBL-1.0;
       (d) a link to the original repository, when the Work was obtained from
           a public repository;

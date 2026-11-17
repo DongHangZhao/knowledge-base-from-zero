@@ -225,18 +225,20 @@ def _post(url: str, body: dict, key: str, timeout: float) -> dict:
 
 
 def chat(prompt: str, system: str = "", task: str = "", *, temperature: float = 0.0,
-         max_tokens: int = 512, prompt_version: str = "") -> dict:
+         max_tokens: int = 512, prompt_version: str = "", use_cache: bool = True) -> dict:
     """单轮补全。返回统一结构，**任何失败都不抛给调用方**（降级而非中断，§5 L2）。
 
     {ok, text, degraded, cached, reason, latency_ms, usage}
     prompt_version: W12 · D，由调用方用 prompt_version_of(模板...) 显式传入；
                     空 = 兼容旧键（不传版本的历史调用仍命中原缓存）。
+    use_cache: W14 · 默认 True 保持全部现有语义；验开关/降级行为的用例（如 selftest
+               degrade）显式传 False，避免历史缓存把「off 应降级」短路成 reason=cache。
     """
     cfg = settings()
     key = cache_key(cfg["model"], system, prompt, prompt_version)
     t0 = time.perf_counter()
 
-    if cached := cache_get(key, cfg["cache_ttl"]):
+    if use_cache and (cached := cache_get(key, cfg["cache_ttl"])):
         trace({"task": task, "model": cfg["model"], "cache_key": key,
                "cached": True, "degraded": False, "latency_ms": 0,
                "prompt_version": prompt_version,

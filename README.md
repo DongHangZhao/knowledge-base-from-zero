@@ -17,6 +17,8 @@
 > 一套可复用的「个人 / 团队知识库 + AI 外置大脑」搭建方法论与工具集。
 > 由作者长期自用的知识库体系提炼、**彻底去隐私化**后公开。
 >
+> **本项目署名**：`knowledge-base-from-zero`（知识库搭建体系·从零到一）· 作者 **落花飞雪·** · 许可 **KBL-1.0** · 原始仓库 <https://github.com/DongHangZhao/knowledge-base-from-zero>
+>
 > 许可：**KBL-1.0** —— 可免费用、随便改，**不可商用**，转载须署名并标注出处。
 > 准确表述是「**源码可见（source-available）· 非 OSI 开源**」：代码你读得到、改得了，但它不是 OSI 认可的开源许可。
 > 商用 / 企业生产部署须按 `LICENSE` §5 取得书面许可 → 见 [`COMMERCIAL.md`](COMMERCIAL.md)。
@@ -108,7 +110,7 @@ flowchart LR
 - 公开评测表 `examples/EVAL.md` 是**弱标注**集：R@5 / MRR 满分只说明链路通，
   **不得当作检索质量结论、模型选型或简历数字**；理由见该文件。
 - 🔴 边界：不替换生产、不推生产 `kb.db` / 真实项目名 / 患者与个人数据；
-  服务只绑 `127.0.0.1`，不上云、不对外发布；许可 KBL-1.0、署名 FallenPetal。
+  服务只绑 `127.0.0.1`，不上云、不对外发布；许可 KBL-1.0、署名 落花飞雪·。
 
 ---
 
@@ -272,7 +274,7 @@ my-knowledge-base/
 | 用于非商业开源项目（须同许可） | 改成 MIT / Apache 再发布 |
 | 组织内 30 天评估试用 | 放进公司生产环境长期跑（需商业授权） |
 
-**转载必须标注**：项目名 + 作者 `FallenPetal` + 许可 `KBL-1.0` + 原始仓库链接（衍生作品还要写「已修改」）。
+**转载必须标注**：项目名 + 作者 `落花飞雪·` + 许可 `KBL-1.0` + 原始仓库链接（衍生作品还要写「已修改」）。
 四种场景的署名模板复制即用 → [`NOTICE`](NOTICE) 第 1 节。
 
 想了解「为什么不用 MIT / GPL / CC BY-NC / PolyForm」的取舍过程 → [`docs/开源守则.md`](docs/开源守则.md)。
@@ -317,5 +319,7 @@ my-knowledge-base/
 
 ## License
 
-[KBL-1.0](LICENSE) —— 免费用、随便改，**不可商用**；转载须署名 `FallenPetal` 并标注出处。
+本项目署名：`knowledge-base-from-zero` · 作者 `落花飞雪·` · 许可 `KBL-1.0` · 原始仓库 <https://github.com/DongHangZhao/knowledge-base-from-zero>。
+
+[KBL-1.0](LICENSE) —— 免费用、随便改，**不可商用**；转载须署名 `落花飞雪·` 并标注出处。
 「源码可见（source-available）· 非 OSI 开源」。商用 / 企业生产部署须按 `LICENSE` §5 取得书面许可，流程见 [`COMMERCIAL.md`](COMMERCIAL.md)。

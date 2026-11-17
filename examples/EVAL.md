@@ -63,4 +63,4 @@ python examples/eval_public.py     # 重新生成本表
 - `rank=未命中` 照样列出，不剔除、不放宽、不补标注（库主铁律：库里有的不许说没有）。
 - 未做长时多进程并发压测；REST 侧并发基线见 `HANDOFF.md`，短并发 ≠ soak。
 - 零 push / 零上传 / 零发布：本表只是本地产物，完成 ≠ 发布。
-- 许可 KBL-1.0 · 署名 FallenPetal。
+- 许可 KBL-1.0 · 署名 落花飞雪·。

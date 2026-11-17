@@ -21,7 +21,7 @@
 跑法（必须在沙盘库上）：
     python build_sidecar_v2.py --db state/_kg_sandbox.db --workers 16
 
-作者：FallenPetal ｜ 用途：一次性实验，结论出来后与 kg_*.py 一起删
+作者：落花飞雪· ｜ 用途：一次性实验，结论出来后与 kg_*.py 一起删
 """
 
 import argparse

@@ -1,0 +1,23 @@
+{
+  "root": "~/example-kb/kb-from-zero",
+  "files_scanned": 174,
+  "skipped": [
+    "tools/privacy_scan.py"
+  ],
+  "rules": 16,
+  "terms_loaded": 12,
+  "terms_file": "~/example-home/示例管理员/.kb_privacy_terms.txt",
+  "block": 0,
+  "warn": 1,
+  "info": 0,
+  "hits": [
+    {
+      "file": "modules/知识图谱/calibration/judge_calibration_30.csv",
+      "rule": "未知扩展名（需人工确认）",
+      "level": "WARN",
+      "match": ".csv",
+      "context": "不在文本/二进制白名单内"
+    }
+  ],
+  "ok": true
+}

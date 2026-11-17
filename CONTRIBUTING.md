@@ -1,6 +1,6 @@
 # 贡献与发版规范
 
-**简体中文** ｜ 许可 KBL-1.0（不可商用 · 强制署名 · 相同方式共享，署名 FallenPetal）
+**简体中文** ｜ 许可 KBL-1.0（不可商用 · 强制署名 · 相同方式共享，署名 落花飞雪·）
 
 本仓库是 **Docs-as-Code**：Markdown 与源码都在 Git 里，靠 commit / tag / CI 管版本，
 不依赖任何 wiki 服务、不需要 Node 工具链、不启用 Git LFS。

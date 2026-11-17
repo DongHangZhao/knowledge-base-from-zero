@@ -3,8 +3,9 @@ NOTICE
 [简体中文](NOTICE) ｜ **English**
 
 knowledge-base-from-zero — a knowledge base you build from scratch
-Copyright (c) 2026 FallenPetal
+Author: 落花飞雪· ｜ Copyright (c) 2026 落花飞雪·
 License: KBL-1.0 (Knowledge Base From Zero Open License v1.0)
+Original repository: https://github.com/DongHangZhao/knowledge-base-from-zero
          See LICENSE (English) / LICENSE.zh-CN.md (Chinese; Chinese prevails on conflict)
 
 This file covers three things: how to attribute, what this repository contains
@@ -22,24 +23,24 @@ description, on a course landing page, or in a derivative project's About page.
 [Template A · Repository / project README]
 
   > This project is built on [knowledge-base-from-zero](original repository URL),
-  > by FallenPetal, licensed under KBL-1.0 (non-commercial).
+  > by 落花飞雪·, licensed under KBL-1.0 (non-commercial).
   > Modified: <one sentence describing your changes>.   <- derivatives only
 
 [Template B · Article / blog / newsletter]
 
-  This method is adapted from FallenPetal's "Build Your Knowledge Base From Zero"
+  This method is adapted from 落花飞雪·'s "Build Your Knowledge Base From Zero"
   (knowledge-base-from-zero, KBL-1.0, original repository URL).
 
 [Template C · Video / course / livestream]
 
   State on screen or in the description:
-  Method source: FallenPetal · Build Your Knowledge Base From Zero · KBL-1.0
+  Method source: 落花飞雪· · Build Your Knowledge Base From Zero · KBL-1.0
   <original repository URL>
 
 [Template D · Software / app "About" page]
 
   This software includes code from knowledge-base-from-zero,
-  Copyright (c) 2026 FallenPetal, used under KBL-1.0.
+  Copyright (c) 2026 落花飞雪·, used under KBL-1.0.
   <original repository URL>
 
 Hard requirements (per Section 3.2 of the license):

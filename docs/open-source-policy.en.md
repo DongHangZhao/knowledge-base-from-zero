@@ -136,7 +136,7 @@ While using the system yourself, **you do not need to do anything** (personal, n
 
 Once you redistribute, remember three lines:
 
-1. **Name it**: FallenPetal · knowledge-base-from-zero
+1. **Name it**: 落花飞雪· · knowledge-base-from-zero
 2. **Link it**: the original repository URL
 3. **Say what changed**: one sentence (derivatives only)
 

@@ -1,0 +1,65 @@
+name: eval-ci
+
+# W9-D · 公开评测 CI（新增文件，不改既有 ci.yml —— 复用＝加副本，不碰原版）
+#
+# 三条链（卡片 D）：run_tests.py --ci + eval_gate.py（示例集→明确 SKIP）
+#                  + privacy_scan.py --git-only
+# 🔴 编排统一交给 modules/知识库索引/w9_eval/w9_ci.py：
+#    GitHub Actions 的 `run: |` 多行默认不逐条拦，一条挂了后面照跑会「看上去全绿」；
+#    编排器用 subprocess 显式取每条 returncode，FAIL 绝不洗成 SKIP。
+# 🔴 仓库侧只有脱敏示例集，没有冻结主集 / 生产索引库：
+#    eval_gate 本体记 SKIP（明确打印原因，非 PASS），但 --self-test 真跑验逻辑。
+#    🔴 生产 184 条含真实业务 query，绝不推上公开仓库。
+# 🔴 CI 绿 ≠ 可以发布：词表 ~/.kb_privacy_terms.txt 按隐私红线不得入库，
+#    发布前必须在本机带词表再跑一次 privacy_scan.py --git-only。
+# 🔴 本 workflow 只做校验，零 push / 零上传 / 零发布；对外动作归库主单独授权。
+# 作者：落花飞雪· ｜ 许可：KBL-1.0
+
+on:
+  push:
+    paths:
+      - "modules/知识库索引/**"
+      - "tools/**"
+      - ".github/workflows/eval-ci.yml"
+  pull_request:
+    paths:
+      - "modules/知识库索引/**"
+      - "tools/**"
+      - ".github/workflows/eval-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval-and-observability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            modules/知识库索引/requirements.txt
+            modules/知识库索引/requirements-extra.txt
+
+      # ⚠️ 不装 torch / ragas / deepeval / opentelemetry：
+      # W9 全部指标走「官方定义的本地实现」，零外部 API、零云端模型。
+      - name: 装最小依赖（jieba + numpy）
+        run: |
+          python -m pip install --upgrade pip
+          pip install "jieba>=0.42" "numpy>=1.24"
+
+      - name: 语法体检
+        run: python -m compileall -q modules/知识库索引
+
+      - name: 离线回归 + 评测门禁 + W9 五件套自测 + 隐私终审
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python modules/知识库索引/w9_eval/w9_ci.py --ci
+
+      - name: 隐私终审（开源出口 · git-only）
+        run: python tools/privacy_scan.py --root . --git-only --no-assets --json

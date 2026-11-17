@@ -10,6 +10,8 @@
 > A reusable methodology and toolset for building a **personal or team knowledge base that doubles as an AI external brain**.
 > Distilled from the author's own long-running setup, then **fully de-identified** before publication.
 >
+> **Attribution for this project**: `knowledge-base-from-zero` (Build Your Knowledge Base From Zero) · author **落花飞雪·** · license **KBL-1.0** · original repository <https://github.com/DongHangZhao/knowledge-base-from-zero>
+>
 > License: **KBL-1.0** — free to use, free to modify, **no commercial use**, attribution and source link required when redistributing.
 > See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md) / [`docs/open-source-policy.en.md`](docs/open-source-policy.en.md).
 
@@ -180,7 +182,7 @@ This project is **not MIT and not GPL**. It uses a custom license: source-visibl
 | Use it in a non-commercial open-source project (same license) | Re-license it as MIT / Apache and republish |
 | Evaluate it inside your organization for 30 days | Run it in company production long-term (commercial license required) |
 
-**Redistribution must state**: project name + author `FallenPetal` + license `KBL-1.0` + original repository link (derivatives must also say "modified").
+**Redistribution must state**: project name + author `落花飞雪·` + license `KBL-1.0` + original repository link (derivatives must also say "modified").
 Copy-paste attribution templates for four scenarios → [`NOTICE.en.md`](NOTICE.en.md) section 1.
 
 Why not MIT / GPL / CC BY-NC / PolyForm → [`docs/open-source-policy.en.md`](docs/open-source-policy.en.md).
@@ -225,4 +227,4 @@ When you build your own, keep private data local: **never in git, never in the c
 
 ## License
 
-[KBL-1.0](LICENSE) — free to use and modify, **no commercial use**; redistribution must credit `FallenPetal` and link the source.
+[KBL-1.0](LICENSE) — free to use and modify, **no commercial use**; redistribution must credit `落花飞雪·` and link the source.

@@ -83,7 +83,9 @@ def cmd_selftest() -> int:
     checks.append({"case": "cache_key", "ok": k1 == k2 and len(k1) == 24, "key": k1})
 
     # 5) 默认 off 时必须是降级而不是异常
-    res = llm_kit.chat("自测：只输出 ok", task="selftest", max_tokens=8)
+    # W14：本用例验的是「开关关→降级」，不能被历史缓存短路成 reason=cache；
+    #      显式 use_cache=False，让用例只测降级行为本身（不迁就判据，见卡 §四）。
+    res = llm_kit.chat("自测：只输出 ok", task="selftest", max_tokens=8, use_cache=False)
     checks.append({"case": "degrade", "ok": res["degraded"] is True, "reason": res["reason"]})
 
     # 6) W12 · D：提示词版本参与缓存键；不传版本时逐位兼容旧键，传不同版本必失效

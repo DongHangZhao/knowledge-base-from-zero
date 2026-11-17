@@ -28,7 +28,7 @@
     python kb_profile.py --apply enterprise --json    # 机器可读（含 env/profile 来源）
     KB_PROFILE=team python kb_rag.py search --query x # 进程启动时按档铺默认值
 
-作者：FallenPetal ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
+作者：落花飞雪· ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
 """
 
 import argparse

@@ -64,7 +64,7 @@ RULES = [
 # 允许出现的技术性例外（命中后不计入）
 ALLOW = {
     "127.0.0.1", "0.0.0.0", "localhost",
-    "FallenPetal",            # 公开笔名，即许可署名
+    "落花飞雪·",            # 公开笔名，即许可署名
     "noreply@github.com", "you@example.com", "user@example.com",
 }
 

@@ -3670,7 +3670,7 @@
   {
    "qid": "W6MH-087",
    "question": "跨文档看，「Bottom」和「English」的论述各落在哪一篇？",
-   "bridge_entity": "FallenPetal",
+   "bridge_entity": "落花飞雪·",
    "gt": [
     {
      "path": "kb-from-zero/docs/open-source-policy.en.md",

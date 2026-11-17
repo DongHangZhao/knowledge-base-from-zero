@@ -145,5 +145,5 @@ See [faq.en.md](faq.en.md). The two most frequent:
 
 ## 10. License reminder
 
-This repository is **KBL-1.0**: free to use, free to modify, **no commercial use**; when redistributing you must attribute `FallenPetal` and mark the source.
+This repository is **KBL-1.0**: free to use, free to modify, **no commercial use**; when redistributing you must attribute `落花飞雪·` and mark the source.
 See [LICENSE](LICENSE) / [LICENSE.zh-CN.md](LICENSE.zh-CN.md) / [NOTICE.en.md](NOTICE.en.md) / [docs/open-source-policy.en.md](open-source-policy.en.md).

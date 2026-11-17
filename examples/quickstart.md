@@ -77,5 +77,5 @@ mock 输出**不是**评测结论，只能用来验链路。
 
 - 🔴 **适配器仅为互操作/演示，生产检索不走框架**（为什么自研见根 README「RAG Engine」一节）。
 - 🔴 不替换生产、不改 `mcp_server.py` 原版、不推生产 `kb.db` / 真实项目名 / 患者与个人数据。
-- 🔴 开源/对外一律 **KBL-1.0**，署名 **FallenPetal**；推送前 `python tools/privacy_scan.py --git-only` 必须 0 BLOCK。
+- 🔴 开源/对外一律 **KBL-1.0**，署名 **落花飞雪·**；推送前 `python tools/privacy_scan.py --git-only` 必须 0 BLOCK。
 - 许可：KBL-1.0（源码可见 · 非商用 · 强制署名 · 相同方式共享），见根 `LICENSE`。

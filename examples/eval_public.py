@@ -112,7 +112,7 @@ def main():
     L.append("- `rank=未命中` 照样列出，不剔除、不放宽、不补标注（库主铁律：库里有的不许说没有）。")
     L.append("- 未做长时多进程并发压测；REST 侧并发基线见 `HANDOFF.md`，短并发 ≠ soak。")
     L.append("- 零 push / 零上传 / 零发布：本表只是本地产物，完成 ≠ 发布。")
-    L.append("- 许可 KBL-1.0 · 署名 FallenPetal。\n")
+    L.append("- 许可 KBL-1.0 · 署名 落花飞雪·。\n")
     open(OUT, "w", encoding="utf-8").write("\n".join(L))
     print("EVAL.md written: %s" % OUT)
     print("docs=%d chunks=%d n=%d traced=%d R@5=%.3f MRR=%.3f p50=%.2fms p95=%.2fms avg_cov=%s" %

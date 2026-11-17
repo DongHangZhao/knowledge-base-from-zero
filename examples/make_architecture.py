@@ -74,7 +74,7 @@ ax.text(0.35, 1.28, "凭据只走库外环境变量；零 push / 零上传 / 零
 ax.text(0.35, 0.55, "实测取证：REST 三接口 rc=0 ｜ 8 并发 24 请求 0 错误 ｜ 热态 p95 157.7ms ｜"
         " 公开弱标注集 R@5 1.000（不作质量结论）", ha="left", fontsize=8.2,
         color=GRAY, fontproperties=FONT)
-ax.text(0.35, 0.25, "KBL-1.0 · FallenPetal ｜ 本图由 make_architecture.py 本地绘制，"
+ax.text(0.35, 0.25, "KBL-1.0 · 落花飞雪· ｜ 本图由 make_architecture.py 本地绘制，"
         "按隐私门禁不入 git", ha="left", fontsize=7.8, color=GRAY, fontproperties=FONT)
 
 plt.tight_layout(pad=0.4)

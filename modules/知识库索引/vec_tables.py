@@ -26,7 +26,7 @@
     · **表名白名单**：`missing_ids(conn, table)` 只认 `TABLES` 里的三个名字，
       其余一律 `ValueError` —— 表名是要拼进 SQL 的，不校验就是注入面。
 
-作者：FallenPetal ｜ 许可：见仓库 LICENSE（KBL-1.0，非商用）
+作者：落花飞雪· ｜ 许可：见仓库 LICENSE（KBL-1.0，非商用）
 """
 
 import datetime
