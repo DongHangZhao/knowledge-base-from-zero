@@ -4,7 +4,7 @@
 --version 1.19.0
 --numeric-version 11900
 --bootstrap webview
---requirements python3,webviewjni
+--requirements python3==3.11.9,hostpython3==3.11.9,webviewjni
 --port 8799
 --permission INTERNET
 --orientation sensor

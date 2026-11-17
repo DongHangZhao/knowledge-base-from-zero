@@ -4,6 +4,8 @@ dist/
 __pycache__/
 *.pyc
 *.spec
+# 例外：kb-hub 构建 spec 必须入库，CI 三平台二进制构建依赖它（相对路径，无 PII）
+!kb-hub/kb-hub.spec
 usage.json
 
 # 真实扫描清单（含本机绝对路径 / 真实模块名，绝不入库）
