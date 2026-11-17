@@ -13,21 +13,23 @@ rm -rf dist
 
 # libgcc_s 兜底：CPython configure 在 api21 target 下链接测试硬编码要 -lgcc_s，
 # 但 r25c 已用 compiler-rt(builtins+unwind) 取代、不提供该库，导致 configure 误判
-# "C compiler cannot create executables"。用 NDK clang 编一个空 stub .so 补齐符号名。
+# "C compiler cannot create executables"。在 NDK sysroot 的库搜索路径放空 stub 静态库
+# （-lgcc_s 会找 libgcc_s.a/.so；configure 只验链接能过，符号由 compiler-rt 提供）。
 echo "=== libgcc_s 兼容兜底 ==="
 if [ -n "${ANDROIDNDK:-}" ] && [ -d "$ANDROIDNDK" ]; then
-  _CC="$ANDROIDNDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
-  while IFS= read -r d; do
-    if [ ! -e "$d/libgcc_s.so" ]; then
-      if [ -f "$d/libgcc.a" ]; then
-        ln -s libgcc.a "$d/libgcc_s.so" 2>/dev/null && echo "  linked libgcc.a -> libgcc_s.so in $d" || true
-      elif [ -x "$_CC" ]; then
-        echo 'void __kbhub_libgcc_stub(void){}' > /tmp/_libgcc_stub.c
-        "$_CC" -shared -fPIC /tmp/_libgcc_stub.c -o "$d/libgcc_s.so" 2>/dev/null \
-          && echo "  built empty libgcc_s.so stub in $d" || true
-      fi
+  _PREFIX="$ANDROIDNDK/toolchains/llvm/prebuilt/linux-x86_64"
+  _AR="$_PREFIX/bin/llvm-ar"
+  _SYSLIB="$_PREFIX/sysroot/usr/lib/aarch64-linux-android"
+  echo "  sysroot lib dir: $_SYSLIB (exists=$([ -d "$_SYSLIB" ] && echo yes || echo no))"
+  echo 'void __kbhub_libgcc_stub(void){}' > /tmp/_libgcc_stub.c
+  "$_PREFIX/bin/aarch64-linux-android21-clang" -c /tmp/_libgcc_stub.c -o /tmp/_libgcc_stub.o 2>/dev/null || true
+  for d in "$_SYSLIB" "$_SYSLIB/21"; do
+    [ -d "$d" ] || continue
+    if [ -f "$_AR" ] && [ -f /tmp/_libgcc_stub.o ]; then
+      "$_AR" rcs "$d/libgcc_s.a" /tmp/_libgcc_stub.o 2>/dev/null && echo "  built libgcc_s.a stub in $d" || true
     fi
-  done < <(find "$ANDROIDNDK/sysroot/usr/lib" -type d -name "aarch64-linux-android*" 2>/dev/null)
+  done
+  echo "  verify:"; find "$_SYSLIB" -maxdepth 2 -name 'libgcc_s*' -printf "    %p\n" 2>/dev/null
 fi
 
 echo "=== 构建 APK（配置来自同目录 .p4a）==="
