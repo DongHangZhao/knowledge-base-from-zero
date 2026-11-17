@@ -11,13 +11,21 @@ python3 -m pythonforandroid.toolchain --version 2>&1 | head -2 || p4a --version 
 echo "=== 清理旧 dist ==="
 rm -rf dist
 
-# libgcc_s 兜底：CPython configure 在 api21 target 下链接测试要 -lgcc_s，
-# 部分 NDK sysroot 只有 libgcc.a。建软链补齐，避免 configure 误判编译器不可用。
+# libgcc_s 兜底：CPython configure 在 api21 target 下链接测试硬编码要 -lgcc_s，
+# 但 r25c 已用 compiler-rt(builtins+unwind) 取代、不提供该库，导致 configure 误判
+# "C compiler cannot create executables"。用 NDK clang 编一个空 stub .so 补齐符号名。
 echo "=== libgcc_s 兼容兜底 ==="
 if [ -n "${ANDROIDNDK:-}" ] && [ -d "$ANDROIDNDK" ]; then
+  _CC="$ANDROIDNDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
   while IFS= read -r d; do
-    if [ ! -e "$d/libgcc_s.so" ] && [ -f "$d/libgcc.a" ]; then
-      ln -s libgcc.a "$d/libgcc_s.so" 2>/dev/null && echo "  linked libgcc_s.so in $d" || true
+    if [ ! -e "$d/libgcc_s.so" ]; then
+      if [ -f "$d/libgcc.a" ]; then
+        ln -s libgcc.a "$d/libgcc_s.so" 2>/dev/null && echo "  linked libgcc.a -> libgcc_s.so in $d" || true
+      elif [ -x "$_CC" ]; then
+        echo 'void __kbhub_libgcc_stub(void){}' > /tmp/_libgcc_stub.c
+        "$_CC" -shared -fPIC /tmp/_libgcc_stub.c -o "$d/libgcc_s.so" 2>/dev/null \
+          && echo "  built empty libgcc_s.so stub in $d" || true
+      fi
     fi
   done < <(find "$ANDROIDNDK/sysroot/usr/lib" -type d -name "aarch64-linux-android*" 2>/dev/null)
 fi

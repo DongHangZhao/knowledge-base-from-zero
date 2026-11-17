@@ -117,11 +117,11 @@ jobs:
           mv "$ANDROIDSDK/cmdline-tools/cmdline-tools" "$ANDROIDSDK/cmdline-tools/latest"
           yes | "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-33" "build-tools;33.0.2" > /dev/null
-          # NDK r23c：最后一个自带 libgcc_s 的版本。CPython configure 在 api21 target 下
-          # 链接测试显式要 -lgcc_s，r25c/r28c 已移除（compiler-rt 取代）导致 configure 失败。
-          wget -q https://dl.google.com/android/repository/android-ndk-r23c-linux.zip -O /tmp/ndk.zip
+          # NDK r25c：p4a 最低要求 NDK 25（r23c 被拒）。CPython configure 在 api21
+          # target 链接测试要 -lgcc_s，r25c 已移除——由 build_apk.sh 的软链兜底补齐。
+          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -O /tmp/ndk.zip
           unzip -q /tmp/ndk.zip -d "$HOME"
-          mv "$HOME/android-ndk-r23c" "$ANDROIDNDK"
+          mv "$HOME/android-ndk-r25c" "$ANDROIDNDK"
           echo "ANDROIDSDK=$ANDROIDSDK" >> $GITHUB_ENV
           echo "ANDROIDNDK=$ANDROIDNDK" >> $GITHUB_ENV
           echo "ANDROIDAPI=33" >> $GITHUB_ENV
