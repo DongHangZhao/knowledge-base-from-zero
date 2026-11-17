@@ -87,10 +87,6 @@ jobs:
   android-apk:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    env:
-      # pyjnius 的隔离 wheel 构建环境默认不带 Cython（hostpython 3.14 + p4a pip 路径），
-      # 关掉构建隔离让它复用 requirements 里装好的 cython==3.0.11。
-      PIP_NO_BUILD_ISOLATION: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,8 +105,8 @@ jobs:
             autoconf automake autopoint ccache cmake g++ gcc git lbzip2 \
             libffi-dev libltdl-dev libtool libssl-dev make patch pkg-config \
             unzip wget zip openjdk-17-jdk
-      - name: 装 p4a
-        run: pip install --upgrade pip && pip install python-for-android cython==3.0.11
+      - name: 装 p4a（锁定 2024.1.21：Python 3.11 + 传统 pyjnius recipe，避开新版 3.14/PEP517 隔离缺 Cython）
+        run: pip install --upgrade pip && pip install python-for-android==2024.1.21 cython==3.0.11
       - name: 装 Android SDK/NDK
         run: |
           export ANDROIDSDK="$HOME/android-sdk"
