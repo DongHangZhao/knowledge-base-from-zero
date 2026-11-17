@@ -162,3 +162,28 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - **p4a 路径都是两道 404 换来的**：网上流传的 webview 示例仓库名多为失效链接。以官方文档为准：
   `p4a apk --bootstrap=webview --requirements=python3,webviewjni --port=8799`，配置放 `.p4a`。
   Android 上 `sys.stdout.reconfigure` 可能不存在，要 try/except 兜底；砍掉所有 subprocess。
+
+## 11. 已踩过的坑（Android APK 九轮取证 · W15 续 · 2026-11-17）
+
+- **`*.spec` 被 gitignore 排除 = CI 三平台全挂**：本地有 `kb-hub/kb-hub.spec`，但 `.gitignore` 的
+  `*.spec` 让它从未入库；CI checkout 后报 `ERROR: Spec file "kb-hub.spec" not found`，win/linux/mac
+  三平台 exit 1。修复：`.gitignore` 加 `!kb-hub/kb-hub.spec` 例外。诊断法：`git ls-files <spec>` 空
+  + `git check-ignore -v` 命中 = 就是没入库，别在 spec 内容里找 bug。
+- **p4a Python 版本不是越低越好**：锁 `python3==3.11.9` 后 `MACHDEP="linux"`（p4a 新版没有 3.11
+  的 Android patch），configure 走 Linux 链接路径找一堆库全失败；默认 3.14.2 的 `MACHDEP="android"`
+  才对。判据：看 configure 日志的 `checking MACHDEP...` 行，必须是 `"android"`。
+- **NDK 版本两难**：r28c/r25c 编译器本身可用，但 CPython configure 在 api21 target 链接测试
+  硬编码要 `-lgcc_s`，这两个 NDK 已用 compiler-rt 取代、不提供 → `C compiler cannot create
+  executables`；降到 r23c 有 libgcc_s 但 p4a 新版直接拒绝 `minimum supported NDK version is 25`。
+  收敛到 r25c + 在 sysroot 用 llvm-ar 建空 `libgcc_s.a` stub（符号由 compiler-rt 提供）。
+- **造假 stub 会连锁失败**：给 openssl/sqlite3 也建空 stub 骗过链接测试后，configure 转为去找
+  `openssl/ssl.h` 头文件而失败——越造越多。根因是 `.p4a` 的 `--blacklist-requirements sqlite3,openssl`
+  **未真正生效**（python3 recipe 仍带 `--with-openssl`）。正解是去掉 blacklist，让 openssl/sqlite3
+  recipe 用 CI 已装的 `libssl-dev` 正常交叉编译（官方完整流程），只保留 gcc_s 一个兜底。
+- **诊断方法论**：`gh run view <id> --log-failed` 拿到失败 job 日志；p4a 的真实错误在它 dump 的
+  `config.log` 里（CI 日志默认不打印），在 `build_apk.sh` 失败分支加 `find ... -name config.log`
+  + grep error 段 + clang 冒烟测试，一轮就能定位，比盲调参数省 5+ 轮。
+- **`gh run download` / curl 下载 artifact 会被 SIGTERM 截断**：大 artifact（>8MB）前台下载超时，
+  文件看似落地但 `unzip -t` 报 `End-of-central-directory signature not found`。解法：后台任务 +
+  `gh api repos/<repo>/actions/artifacts/<id>/zip > file`（`gh api` 无 `--output` 标志，用 shell
+  重定向），下载后必做 `unzip -t` 校验完整性，别只看文件大小。

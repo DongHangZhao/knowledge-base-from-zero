@@ -18,6 +18,27 @@
 > 待发内容先写在这里；正式发版时由 `tools/release_gate.py --bump ... --apply` 生成带版本号的段落。
 > `make_release_notes.py` 明确忽略本段，未发内容不会混进 Release 正文。
 
+### 多平台发布产物补齐（W15 续 · 2026-11-17）
+
+- **10 个历史 Release 全部补齐 assets**：v1.3.0/v1.3.1/v1.4.0/v1.15.0~v1.20.0 每个挂载
+  `kb-from-zero.zip`（按各 tag `git archive` 单独打，内容对应版本）、`kb-hub.exe`、`kb-hub-linux`、
+  `kb-hub-macos`。此前这些 Release 只有 GitHub 自动生成的 Source code (zip/tar.gz)。
+  - **决策理由**：库主明确要求历史版本也补齐多平台产物。源码按 tag 单独打以保证版本内容对应；
+    桌面二进制是运行时门户工具、读用户自己的 inventory，与知识库版本弱耦合，用当前 master 的
+    `.github/workflows/build-assets.yml` 构建一次上传所有 Release，避免为每个老 tag 重复构建
+    （老源码没有 Android 壳，无法打 apk）。
+  - **取证**：所有源码 zip 解压后 `privacy_scan --no-assets` 0 BLOCK/0 WARN；二进制从干净
+    CI runner 构建（非本机），ELF/Mach-O/PE 头校验通过；`gh release view` 逐版本核对 assets。
+- **CI 三平台构建修复**：`kb-hub.spec` 原先被 `.gitignore` 的 `*.spec` 规则排除、从未入库，
+  CI checkout 后报 `Spec file not found` 三平台全挂。加 `!kb-hub/kb-hub.spec` 例外使其入库，
+  并去掉 spec 注释里的本机绝对路径（避免隐私门禁 BLOCK）。重跑 CI 三平台 success。
+- **Android APK 构建链修复完成**（详见 HANDOFF §11）：p4a 交叉编译 CPython 经 13 轮取证，
+  收敛到 **p4a 2024.1.21 + Python 3.11.9 + NDK 25c** 稳定组合（新版 2026.5.9 默认 Python 3.14
+  的 PEP517 隔离 wheel 构建必缺 Cython；老版 webview bootstrap 自带 JNI、无需列 webviewjni；
+  orientation 只接受 portrait/landscape）。第十三轮 CI `android-apk` job success，产出
+  `kb-hub-android.apk`（11 MB，完整自带后端：内置 CPython + 本地 HTTP server + WebView），
+  已挂载全部 Release。构建链代码/配置全部入库，可一键复现。
+
 ### 修复（W15 · 2026-11-17）
 
 - **署名统一为 `落花飞雪·`**：全仓 38 个文本文件 / 53 处 `FallenPetal` → `落花飞雪·`
