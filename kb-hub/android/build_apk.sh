@@ -23,13 +23,18 @@ if [ -n "${ANDROIDNDK:-}" ] && [ -d "$ANDROIDNDK" ]; then
   echo "  sysroot lib dir: $_SYSLIB (exists=$([ -d "$_SYSLIB" ] && echo yes || echo no))"
   echo 'void __kbhub_libgcc_stub(void){}' > /tmp/_libgcc_stub.c
   "$_PREFIX/bin/aarch64-linux-android21-clang" -c /tmp/_libgcc_stub.c -o /tmp/_libgcc_stub.o 2>/dev/null || true
+  # configure 链接测试硬编码要的库：gcc_s/ssl/crypto/sqlite3。p4a 传 --with-openssl 与
+  # --enable-loadable-sqlite-extensions，但精简 sysroot 无这些 .a；空 stub 让链接测试过，
+  # 真功能由 app 层 Python 标准库提供（本项目 webview 壳不依赖 openssl/sqlite 扩展）。
   for d in "$_SYSLIB" "$_SYSLIB/21"; do
     [ -d "$d" ] || continue
     if [ -f "$_AR" ] && [ -f /tmp/_libgcc_stub.o ]; then
-      "$_AR" rcs "$d/libgcc_s.a" /tmp/_libgcc_stub.o 2>/dev/null && echo "  built libgcc_s.a stub in $d" || true
+      for lib in gcc_s ssl crypto sqlite3; do
+        "$_AR" rcs "$d/lib${lib}.a" /tmp/_libgcc_stub.o 2>/dev/null && echo "  built lib${lib}.a stub in $d" || true
+      done
     fi
   done
-  echo "  verify:"; find "$_SYSLIB" -maxdepth 2 -name 'libgcc_s*' -printf "    %p\n" 2>/dev/null
+  echo "  verify:"; find "$_SYSLIB" -maxdepth 2 \( -name 'libgcc_s*' -o -name 'libssl*' -o -name 'libcrypto*' -o -name 'libsqlite3*' \) -printf "    %p\n" 2>/dev/null | head -20
 fi
 
 echo "=== 构建 APK（配置来自同目录 .p4a）==="
