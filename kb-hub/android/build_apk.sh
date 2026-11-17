@@ -11,6 +11,17 @@ python3 -m pythonforandroid.toolchain --version 2>&1 | head -2 || p4a --version 
 echo "=== 清理旧 dist ==="
 rm -rf dist
 
+# libgcc_s 兜底：CPython configure 在 api21 target 下链接测试要 -lgcc_s，
+# 部分 NDK sysroot 只有 libgcc.a。建软链补齐，避免 configure 误判编译器不可用。
+echo "=== libgcc_s 兼容兜底 ==="
+if [ -n "${ANDROIDNDK:-}" ] && [ -d "$ANDROIDNDK" ]; then
+  while IFS= read -r d; do
+    if [ ! -e "$d/libgcc_s.so" ] && [ -f "$d/libgcc.a" ]; then
+      ln -s libgcc.a "$d/libgcc_s.so" 2>/dev/null && echo "  linked libgcc_s.so in $d" || true
+    fi
+  done < <(find "$ANDROIDNDK/sysroot/usr/lib" -type d -name "aarch64-linux-android*" 2>/dev/null)
+fi
+
 echo "=== 构建 APK（配置来自同目录 .p4a）==="
 if ! p4a apk --private "$(pwd)" --dist_name kbhub; then
   echo "=== [诊断] 构建失败，dump config.log 关键段 ==="
