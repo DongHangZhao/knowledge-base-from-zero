@@ -1,0 +1,134 @@
+name: build-assets
+
+# 多平台发布产物构建（Release assets 用）
+# 🔴 本工作流只构建并把产物上传为 Actions artifact，绝不直接上传 GitHub Release：
+#    隐私词表（~/.kb_privacy_terms.txt）按红线不得入库，CI 隐私门只有 L1+L3，
+#    CI 绿 ≠ 可发布。产物必须由库主下载到本地、带词表跑 privacy_scan 0 BLOCK 后，
+#    再用 gh release upload 推送到 Release。
+# 🔴 二进制是运行时工具，跨版本通用：用当前 master 构建一次，上传到所有历史 Release。
+#    源码 zip 则按各 tag 单独打（git archive），保证版本内容对应。
+#
+# 触发：Actions → build-assets → Run workflow（无需推 tag）
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "源码 ref（分支或 tag，默认 master）"
+        required: false
+        default: "master"
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------- 1) 源码 zip（供各 Release 按 tag 单独打，这里打当前 ref 的供参考）----------
+  source-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 打源码发布包
+        run: python tools/make_release_zip.py --out kb-from-zero.zip
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-source-zip
+          path: kb-from-zero.zip
+          retention-days: 30
+
+  # ---------- 2) 桌面二进制：Windows / Linux / macOS ----------
+  binary:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: kb-hub-windows.exe
+          - os: ubuntu-latest
+            asset: kb-hub-linux
+          - os: macos-latest
+            asset: kb-hub-macos
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 装 PyInstaller
+        run: pip install pyinstaller
+      - name: 构建（spec 已改为相对路径，跨平台通用）
+        shell: bash
+        run: |
+          cd kb-hub
+          python -m PyInstaller --noconfirm --distpath dist --workpath build_ci kb-hub.spec
+          ls -la dist/
+      - name: 重命名产物
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then SRC="kb-hub/dist/kb-hub.exe"; else SRC="kb-hub/dist/kb-hub"; fi
+          cp "$SRC" "${{ matrix.asset }}"
+          ls -la "${{ matrix.asset }}"
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          retention-days: 30
+
+  # ---------- 3) Android APK（p4a webview bootstrap，完整自带后端）----------
+  android-apk:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - name: 装系统依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            autoconf automake autopoint ccache cmake g++ gcc git lbzip2 \
+            libffi-dev libltdl-dev libtool libssl-dev make patch pkg-config \
+            unzip wget zip openjdk-17-jdk
+      - name: 装 p4a
+        run: pip install --upgrade pip && pip install python-for-android cython==3.0.11
+      - name: 装 Android SDK/NDK
+        run: |
+          export ANDROIDSDK="$HOME/android-sdk"
+          export ANDROIDNDK="$HOME/android-ndk"
+          mkdir -p "$ANDROIDSDK/cmdline-tools"
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline.zip
+          unzip -q /tmp/cmdline.zip -d "$ANDROIDSDK/cmdline-tools"
+          mv "$ANDROIDSDK/cmdline-tools/cmdline-tools" "$ANDROIDSDK/cmdline-tools/latest"
+          yes | "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROIDSDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          wget -q https://dl.google.com/android/repository/android-ndk-r28c-linux.zip -O /tmp/ndk.zip
+          unzip -q /tmp/ndk.zip -d "$HOME"
+          mv "$HOME/android-ndk-r28c" "$ANDROIDNDK"
+          echo "ANDROIDSDK=$ANDROIDSDK" >> $GITHUB_ENV
+          echo "ANDROIDNDK=$ANDROIDNDK" >> $GITHUB_ENV
+          echo "ANDROIDAPI=35" >> $GITHUB_ENV
+          echo "NDKAPI=21" >> $GITHUB_ENV
+      - name: 构建 APK
+        run: bash kb-hub/android/build_apk.sh
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-kb-hub-android.apk
+          path: kb-hub/dist/kb-hub-android.apk
+          retention-days: 30

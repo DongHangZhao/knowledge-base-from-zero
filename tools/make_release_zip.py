@@ -25,7 +25,10 @@ REPO = os.path.dirname(HERE)
 ALLOW_EXT = {".md", ".py", ".bat", ".json", ".html", ".css", ".js", ".txt",
              ".yml", ".yaml", ".example"}
 ALLOW_NAME = {"LICENSE", "NOTICE", ".gitignore"}
-SKIP_DIRS = {".git", "__pycache__", "node_modules", "build", "dist", ".idea", ".vscode"}
+# 2026-11-17 修：state 目录含真实评测数据（ab100_*/kg_*/holdout_* 里嵌真名/公司/路径），
+# 绝不能进公开 zip；build*/dist* 是 PyInstaller 构建中间物（xref HTML 带绝对路径）。
+# 原脚本只精确排除 build/dist，遇 build_new 和 state 就漏，导致重打后 privacy_scan 报 50 BLOCK。
+SKIP_DIRS = {".git", "__pycache__", "node_modules", "build", "dist", ".idea", ".vscode", "state"}
 SKIP_FILE = {"kb-hub.exe", "kb-from-zero.zip", "inventory.json", "usage.json",
              "desktop.ini", "Thumbs.db", ".DS_Store"}
 SKIP_EXT = {".db", ".db-wal", ".db-shm", ".log", ".pyc", ".spec"}
@@ -34,7 +37,8 @@ SKIP_EXT = {".db", ".db-wal", ".db-shm", ".log", ".pyc", ".spec"}
 def collect():
     out = []
     for dp, dns, fns in os.walk(REPO):
-        dns[:] = sorted(d for d in dns if d not in SKIP_DIRS and not d.startswith("."))
+        dns[:] = sorted(d for d in dns if d not in SKIP_DIRS and not d.startswith(".")
+                        and not d.startswith("build") and not d.startswith("dist"))
         for fn in sorted(fns):
             if fn in SKIP_FILE:
                 continue

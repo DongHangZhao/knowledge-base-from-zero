@@ -1,0 +1,12 @@
+--dist_name kbhub
+--package org.fallenpetal.kbhub
+--name KBHub
+--version 1.19.0
+--numeric-version 11900
+--bootstrap webview
+--requirements python3,webviewjni
+--port 8799
+--permission INTERNET
+--orientation sensor
+--arch arm64-v8a
+--blacklist-requirements sqlite3,openssl

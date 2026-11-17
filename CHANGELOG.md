@@ -118,6 +118,46 @@
 
 ---
 
+## [v1.20.0] - 2026-11-17
+
+### 新增
+- **多平台发布产物**：补齐 Release 长期缺失的 assets——源码 zip、`kb-hub.exe`（Windows）、
+  `kb-hub-linux`、`kb-hub-macos`、Android `kb-hub-android.apk`。此前 v1.3–v1.19 全部 Release
+  只有 GitHub 自动生成的 Source code 归档，无任何可下载二进制。
+- **Android 子项目** `kb-hub/android/`：p4a `webview` bootstrap 把 Python 解释器 + 精简 HTTP 服务
+  + 前端打进 apk，离线可浏览示例门户。精简后端 `android_server.py` 只保留展示 API，
+  砍掉手机端无意义的 subprocess/启动外部工具调用。`main.py`/`.p4a`/`build_apk.sh` 一应俱全。
+- **`build-assets.yml`**：`workflow_dispatch` 触发，matrix 构建 Win/Linux/macOS 二进制 + p4a 打 apk，
+  产物上传为 Actions artifact（不直接推 Release）。
+
+### 修改
+- `kb-hub.spec`：datas 从写死的仓库绝对路径改为基于 spec 目录的相对路径，跨平台可构建。
+- `make_release_zip.py`：`SKIP_DIRS` 增加 `state` 且排除 `build*`/`dist*` 前缀目录——原脚本把
+  `modules/*/state/*.json`（真实评测数据，含敏感命中上下文）和构建中间物收进 zip，
+  重打后 privacy_scan 报 50 BLOCK，修复后复扫 0 BLOCK。
+
+### 修复
+- Release 产物缺失（本版核心）；跨平台构建路径硬编码；发布包夹带 state 敏感数据。
+
+### 决策理由
+- **二进制用当前 master 构建一次、上传所有历史 Release**：kb-hub 是运行时门户工具，读用户自己的
+  inventory，与知识库版本弱耦合；源码 zip 则按各 tag 单独 `git archive`，保证版本内容对应。
+  避免为每个老 tag 重复构建二进制（且老源码无 Android 壳，无法打 apk）。
+- **apk 不直接进 CI Release**：隐私词表按红线不得入库，CI 隐私门只有 L1+L3，CI 绿 ≠ 可发布；
+  产物须库主下载到本地带词表跑 privacy_scan 0 BLOCK 后再 `gh release upload`。
+- **完整自带后端而非离线展示壳**：用户明确要求功能最全；p4a webview 方案官方支持，
+  代价是首次构建约 20 分钟、体积较大，已如实列为已知问题。
+
+### 已知问题
+- APK 首次 CI 构建需下载 Android SDK/NDK（约 20 分钟），且 debug 签名；数据为内置示例，
+  换自己的库需重新构建。移动端不支持 RAG/视频下载等本机脚本功能（返回友好提示）。
+- Mac 二进制未做签名公证（source-available 项目，用户需自行允许）。
+
+### 对应提交
+- （本轮 commit 后见 v1.20.0 tag）
+
+---
+
 ## [v1.19.0] - 2026-11-17
 
 ### 修复

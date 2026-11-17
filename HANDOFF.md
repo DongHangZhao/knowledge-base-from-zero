@@ -147,3 +147,18 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - **JSON 内反斜杠是双写的**：脱敏脚本替换 Windows 绝对路径时，磁盘文本里的单个 `\` 实际是 `\\`
   （2 个反斜杠字符），字面量少写一个就不命中，复扫还报 BLOCK。替换后必须真跑门禁复扫验 0 BLOCK，
   不能只看脚本 changed=True。
+
+## 10. 已踩过的坑（多平台产物 · W15 续 · 2026-11-17）
+
+- **打包脚本白名单放进 state 目录 = 50 BLOCK**：`make_release_zip.py` 原只排除 `build`/`dist`
+  精确名，`modules/知识库索引/state/*.json`（真实评测数据，含真名/公司/路径命中上下文）被收进 zip，
+  重打后 privacy_scan 报 50 BLOCK。修复：`SKIP_DIRS` 加 `state` + 排除 `build*`/`dist*` 前缀。
+  **重打发布包后必须复扫门禁**，别假设"上次干净这次也干净"。
+- **PyInstaller spec 写死绝对路径**：`kb-hub.spec` 的 datas 原写仓库绝对路径，Linux/macOS runner
+  找不到文件必失败。改为 `os.path.dirname(os.path.abspath(SPEC))` 相对定位，本机 + CI 通用。
+- **PyInstaller 构建中间物会被 git add 带走**：本机用 `--workpath build_new` 构建的中间目录含
+  `xref-kb-hub.html`（嵌入绝对路径），`git add -A` 一并纳入 → 门禁 27 BLOCK。临时构建目录/
+  `.bak` 一律移出库外，add 前 `git status --porcelain -uall` 逐项核。
+- **p4a 路径都是两道 404 换来的**：网上流传的 webview 示例仓库名多为失效链接。以官方文档为准：
+  `p4a apk --bootstrap=webview --requirements=python3,webviewjni --port=8799`，配置放 `.p4a`。
+  Android 上 `sys.stdout.reconfigure` 可能不存在，要 try/except 兜底；砍掉所有 subprocess。

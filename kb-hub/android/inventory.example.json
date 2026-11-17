@@ -1,0 +1,440 @@
+{
+  "kb_root": "~/my-knowledge-base",
+  "generated_at": "示例数据（运行 inventory_builder.py 后自动生成真实清单）",
+  "summary": {
+    "systems": 6,
+    "skills": 8,
+    "skill_categories": 4,
+    "projects": 3,
+    "resources": 5,
+    "entries": 6,
+    "zones": 8,
+    "sessions": 2,
+    "skills_openable": 8,
+    "raw_files": 648,
+    "outputs_files": 295,
+    "wiki_files": 48
+  },
+  "systems": [
+    {
+      "id": "sys:知识沉淀",
+      "name": "知识沉淀",
+      "title": "知识沉淀",
+      "purpose": "资料入库前的三问守卫与 Raw 溯源检查",
+      "status": "—",
+      "rel_path": "modules/知识沉淀",
+      "abs_path": "~/my-knowledge-base\\modules\\知识沉淀",
+      "py_count": 2
+    },
+    {
+      "id": "sys:检索索引",
+      "name": "检索索引",
+      "title": "检索索引",
+      "purpose": "SQLite FTS5 全文检索与向量检索的融合排序",
+      "status": "—",
+      "rel_path": "modules/检索索引",
+      "abs_path": "~/my-knowledge-base\\modules\\检索索引",
+      "py_count": 4
+    },
+    {
+      "id": "sys:二维码工具",
+      "name": "二维码工具",
+      "title": "二维码工具",
+      "purpose": "链接 / 文本 / 文件转二维码，本地生成不外发",
+      "status": "—",
+      "rel_path": "modules/二维码工具",
+      "abs_path": "~/my-knowledge-base\\modules\\二维码工具",
+      "py_count": 1
+    },
+    {
+      "id": "sys:媒体下载",
+      "name": "媒体下载",
+      "title": "媒体下载",
+      "purpose": "贴链接下载视频音频，转写为文字稿后归档",
+      "status": "—",
+      "rel_path": "modules/媒体下载",
+      "abs_path": "~/my-knowledge-base\\modules\\媒体下载",
+      "py_count": 3
+    },
+    {
+      "id": "sys:采集爬虫",
+      "name": "采集爬虫",
+      "title": "采集爬虫",
+      "purpose": "站点批量抓取、正文抽取、图片落盘、断点续传",
+      "status": "—",
+      "rel_path": "modules/采集爬虫",
+      "abs_path": "~/my-knowledge-base\\modules\\采集爬虫",
+      "py_count": 5
+    },
+    {
+      "id": "sys:备份巡检",
+      "name": "备份巡检",
+      "title": "备份巡检",
+      "purpose": "版本快照、滚动备份、资产完整性巡检",
+      "status": "—",
+      "rel_path": "modules/备份巡检",
+      "abs_path": "~/my-knowledge-base\\modules\\备份巡检",
+      "py_count": 2
+    }
+  ],
+  "skills": [
+    {
+      "id": "skill:example:doc-convert",
+      "name": "doc-convert",
+      "cn_name": "示例技能·文档转换",
+      "category": "内置",
+      "source": "内置",
+      "description": "把 PDF / DOCX / PPTX 转成 Markdown，保留标题层级与表格",
+      "triggers": [
+        "doc-convert",
+        "示例技能·文档转换"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\doc-convert\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:image-process",
+      "name": "image-process",
+      "cn_name": "示例技能·图片处理",
+      "category": "内置",
+      "source": "内置",
+      "description": "批量压缩、改尺寸、加水印或去水印，输出到指定目录",
+      "triggers": [
+        "image-process",
+        "示例技能·图片处理"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\image-process\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:sheet-analysis",
+      "name": "sheet-analysis",
+      "cn_name": "示例技能·表格分析",
+      "category": "内置",
+      "source": "内置",
+      "description": "读取 Excel/CSV，做透视、筛选、清洗，输出图表与结论",
+      "triggers": [
+        "sheet-analysis",
+        "示例技能·表格分析"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\sheet-analysis\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:slide-builder",
+      "name": "slide-builder",
+      "cn_name": "示例技能·演示文稿",
+      "category": "项目级",
+      "source": "项目级",
+      "description": "按大纲生成幻灯片，统一版式与配色，导出 pptx",
+      "triggers": [
+        "slide-builder",
+        "示例技能·演示文稿"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\slide-builder\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:rag-answer",
+      "name": "rag-answer",
+      "cn_name": "示例技能·检索问答",
+      "category": "项目级",
+      "source": "项目级",
+      "description": "先检索本地库再作答，答案必须带原文路径，不得凭空补全",
+      "triggers": [
+        "rag-answer",
+        "示例技能·检索问答"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\rag-answer\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:code-review",
+      "name": "code-review",
+      "cn_name": "示例技能·代码审查",
+      "category": "用户级",
+      "source": "用户级",
+      "description": "按团队规范检查命名、异常处理、边界条件与测试覆盖",
+      "triggers": [
+        "code-review",
+        "示例技能·代码审查"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\code-review\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:web-fetch",
+      "name": "web-fetch",
+      "cn_name": "示例技能·网页抓取",
+      "category": "用户级",
+      "source": "用户级",
+      "description": "抓正文、去广告、转 Markdown，保留来源与抓取时间",
+      "triggers": [
+        "web-fetch",
+        "示例技能·网页抓取"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\web-fetch\\SKILL.md",
+      "exists": false
+    },
+    {
+      "id": "skill:example:prompt-assets",
+      "name": "prompt-assets",
+      "cn_name": "示例技能·提示词资产",
+      "category": "提示词资产",
+      "source": "提示词资产",
+      "description": "把常用规矩固化成可复用话术卡片，支持搜索与一键复制",
+      "triggers": [
+        "prompt-assets",
+        "示例技能·提示词资产"
+      ],
+      "path": "~/my-knowledge-base\\.workbuddy\\skills\\prompt-assets\\SKILL.md",
+      "exists": false
+    }
+  ],
+  "skill_categories": [
+    {
+      "category": "内置",
+      "count": 3
+    },
+    {
+      "category": "项目级",
+      "count": 2
+    },
+    {
+      "category": "用户级",
+      "count": 2
+    },
+    {
+      "category": "提示词资产",
+      "count": 1
+    }
+  ],
+  "projects": [
+    {
+      "name": "示例项目A-业务系统实施",
+      "rel_path": "wiki/项目/示例项目A.md",
+      "type": "wiki-md"
+    },
+    {
+      "name": "示例项目B-个人作品集",
+      "rel_path": "wiki/项目/示例项目B.md",
+      "type": "wiki-md"
+    },
+    {
+      "name": "示例项目C-研究笔记",
+      "rel_path": "wiki/项目/示例项目C.md",
+      "type": "wiki-md"
+    }
+  ],
+  "resources": [
+    {
+      "name": "学习笔记",
+      "rel_path": "wiki/学习笔记",
+      "abs_path": "~/my-knowledge-base\\wiki\\学习笔记",
+      "type": "wiki-zone",
+      "files": 12
+    },
+    {
+      "name": "技术",
+      "rel_path": "wiki/技术",
+      "abs_path": "~/my-knowledge-base\\wiki\\技术",
+      "type": "wiki-zone",
+      "files": 18
+    },
+    {
+      "name": "想法与灵感",
+      "rel_path": "wiki/想法与灵感",
+      "abs_path": "~/my-knowledge-base\\wiki\\想法与灵感",
+      "type": "wiki-zone",
+      "files": 6
+    },
+    {
+      "name": "生活",
+      "rel_path": "wiki/生活",
+      "abs_path": "~/my-knowledge-base\\wiki\\生活",
+      "type": "wiki-zone",
+      "files": 9
+    },
+    {
+      "name": "项目",
+      "rel_path": "wiki/项目",
+      "abs_path": "~/my-knowledge-base\\wiki\\项目",
+      "type": "wiki-zone",
+      "files": 3
+    }
+  ],
+  "entries": [
+    {
+      "id": "entry:hub",
+      "name": "知识库后台",
+      "desc": "本地 Web 管理台：文件浏览 / 检索 / 工具",
+      "path": "~/my-knowledge-base\\modules\\知识库管理",
+      "kind": "folder",
+      "action": "open_folder",
+      "icon": "🖥️",
+      "exists": false
+    },
+    {
+      "id": "entry:skills",
+      "name": "技能卡片目录",
+      "desc": "项目内 skill 本体（SKILL.md）",
+      "path": "~/my-knowledge-base\\.workbuddy\\skills",
+      "kind": "folder",
+      "action": "open_folder",
+      "icon": "🧩",
+      "exists": false
+    },
+    {
+      "id": "entry:memory",
+      "name": "记忆日志",
+      "desc": ".workbuddy/memory 下的每日工作日志",
+      "path": "~/my-knowledge-base\\.workbuddy\\memory",
+      "kind": "folder",
+      "action": "open_folder",
+      "icon": "🧠",
+      "exists": false
+    },
+    {
+      "id": "entry:sessions",
+      "name": "聊天记录 / 会话记录",
+      "desc": "AI 工具的会话存档（jsonl）",
+      "path": "~/my-knowledge-base\\.workbuddy\\projects",
+      "kind": "folder",
+      "action": "open_folder",
+      "icon": "💬",
+      "exists": false
+    },
+    {
+      "id": "entry:tools",
+      "name": "工具页（下载 / 搜索 / 二维码）",
+      "desc": "三个高频动作就地做，不跳页",
+      "path": "~/my-knowledge-base\\modules\\知识库管理\\tools.html",
+      "kind": "page",
+      "action": "open_tools",
+      "icon": "🧰",
+      "exists": false
+    },
+    {
+      "id": "entry:raw",
+      "name": "raw 原件区",
+      "desc": "不可变原件：PDF / 图 / 视频 / 文档",
+      "path": "~/my-knowledge-base\\raw",
+      "kind": "folder",
+      "action": "open_folder",
+      "icon": "📥",
+      "exists": false
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone:raw/学习笔记",
+      "name": "学习笔记",
+      "rel_path": "raw/学习笔记",
+      "abs_path": "~/my-knowledge-base\\raw\\学习笔记",
+      "type": "raw-zone",
+      "files": 320
+    },
+    {
+      "id": "zone:raw/技术",
+      "name": "技术",
+      "rel_path": "raw/技术",
+      "abs_path": "~/my-knowledge-base\\raw\\技术",
+      "type": "raw-zone",
+      "files": 120
+    },
+    {
+      "id": "zone:raw/想法与灵感",
+      "name": "想法与灵感",
+      "rel_path": "raw/想法与灵感",
+      "abs_path": "~/my-knowledge-base\\raw\\想法与灵感",
+      "type": "raw-zone",
+      "files": 48
+    },
+    {
+      "id": "zone:raw/生活",
+      "name": "生活",
+      "rel_path": "raw/生活",
+      "abs_path": "~/my-knowledge-base\\raw\\生活",
+      "type": "raw-zone",
+      "files": 96
+    },
+    {
+      "id": "zone:raw/项目",
+      "name": "项目",
+      "rel_path": "raw/项目",
+      "abs_path": "~/my-knowledge-base\\raw\\项目",
+      "type": "raw-zone",
+      "files": 64
+    },
+    {
+      "id": "zone:outputs/日报",
+      "name": "日报",
+      "rel_path": "outputs/日报",
+      "abs_path": "~/my-knowledge-base\\outputs\\日报",
+      "type": "outputs-zone",
+      "files": 180
+    },
+    {
+      "id": "zone:outputs/图表",
+      "name": "图表",
+      "rel_path": "outputs/图表",
+      "abs_path": "~/my-knowledge-base\\outputs\\图表",
+      "type": "outputs-zone",
+      "files": 75
+    },
+    {
+      "id": "zone:outputs/导出",
+      "name": "导出",
+      "rel_path": "outputs/导出",
+      "abs_path": "~/my-knowledge-base\\outputs\\导出",
+      "type": "outputs-zone",
+      "files": 40
+    }
+  ],
+  "sessions": [
+    {
+      "name": "2026-01-01 09:00",
+      "rel_path": "~/.workbuddy/projects/<your-project>/<session>.jsonl",
+      "abs_path": "~/.workbuddy/projects/<your-project>/<session>.jsonl",
+      "type": "session",
+      "size_kb": 128.0
+    },
+    {
+      "name": "2026-01-02 14:30",
+      "rel_path": "~/.workbuddy/projects/<your-project>/<session-2>.jsonl",
+      "abs_path": "~/.workbuddy/projects/<your-project>/<session-2>.jsonl",
+      "type": "session",
+      "size_kb": 256.0
+    }
+  ],
+  "file_stats": {
+    "raw": {
+      "total": 648,
+      "top_ext": {
+        ".pdf": 120,
+        ".md": 210,
+        ".jpg": 180,
+        ".docx": 60,
+        ".png": 66,
+        ".mp4": 12
+      }
+    },
+    "outputs": {
+      "total": 295,
+      "top_ext": {
+        ".png": 75,
+        ".md": 120,
+        ".csv": 40,
+        ".json": 30,
+        ".html": 30
+      }
+    },
+    "wiki": {
+      "total": 48,
+      "top_ext": {
+        ".md": 44,
+        ".jpg": 4
+      }
+    }
+  }
+}
