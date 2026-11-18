@@ -4,6 +4,13 @@
 bge_reranker — Cross-Encoder 精排层（BGE-reranker-v2-m3）
 =========================================================
 
+W26 生产合回（2026-11-18 作者拍板）：ONNX 推理默认 on（CPU 冷/稳态都更快、
+排序无损、缺 ONNX 模型自动回退 torch）；查询级缓存保留但默认 off
+（生产 kb_rag 是 CLI 一次性进程，缓存命中率≈0，切了只增 hash 开销；
+将来若上常驻服务再置 KB_RERANK_CACHE=1）。
+开关：KB_RERANK_ONNX=0 / KB_RERANK_CACHE=1 可一键改回；torch 原路径逐字保留。
+历史：cfd45e6…（合回前原件）备份于 bge_reranker.py.bak-20261116-W26-pre。
+
 为什么加（2026 生产级 RAG 金标准：Hybrid 检索 → RRF 融合 → rerank 精排 → top-k，
 Cohere / OpenAI cookbook / RAGFlow 同款架构）：
   RRF 只按名次融合——两条链路都排前面的文档就靠前，但它看不出
@@ -28,9 +35,51 @@ sys.stdout.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_DIR = os.path.join(HERE, "models", "bge-reranker-v2-m3")
+ONNX_DIR = os.path.join(HERE, "models", "bge-reranker-v2-m3-onnx")
 BATCH = 16                     # 批推理大小（CPU）：30 条池子两批跑完，8 线程无压力
 BATCH_GPU = 32                 # GPU 上可以更大批；fp16 + 32 条约占 2-3GB 显存
 _MODEL_CACHE = {}              # 单例：加载一次 19s，同进程后续调用零成本
+
+# W26（2026-11-18 作者拍板切默认）：ONNX 默认 on，缓存默认 off。
+# KB_RERANK_ONNX=0 一键回退 torch；KB_RERANK_CACHE=1 将来常驻服务时开启。
+USE_ONNX = os.environ.get("KB_RERANK_ONNX", "1") == "1"
+USE_CACHE = os.environ.get("KB_RERANK_CACHE", "0") == "1"
+_QUERY_CACHE = {}              # key = (query, 参数指纹) -> result
+_CACHE_STATS = {"hit": 0, "miss": 0}   # 命中率统计（进程内）
+_ONNX_SESSION = {}            # onnxruntime InferenceSession 单例
+
+
+def cache_stats():
+    """返回查询级缓存命中统计与当前缓存条数（供延迟对比脚本取数）。"""
+    hits, misses = _CACHE_STATS["hit"], _CACHE_STATS["miss"]
+    total = hits + misses
+    return {"hit": hits, "miss": misses, "total": total,
+            "hit_rate": (hits / total) if total else 0.0, "size": len(_QUERY_CACHE)}
+
+
+def reset_cache():
+    """清空缓存与统计（测命中率前调用，保证从冷缓存起算）。"""
+    _QUERY_CACHE.clear()
+    _CACHE_STATS["hit"] = 0
+    _CACHE_STATS["miss"] = 0
+
+
+def _param_fingerprint(query, items, topk, max_length):
+    """缓存键 = query + 参与计算的全部参数指纹（含 items 全文 / topk / max_length）。
+    hashlib 逐字段喂入，参数任何一个不同 → 指纹不同 → 不命中，避免串缓存。
+    rerank_texts 多段落也纳入，键与 _pairs_of 实际取值保持一致。"""
+    import hashlib
+    h = hashlib.sha1()
+    h.update(query.encode("utf-8"))
+    for it in items:
+        k = _key_of(it) or ""
+        texts = [t for t in (it.get("rerank_texts") or []) if t]
+        payload = texts if texts else [_text_of(it)]
+        h.update(("\x1f" + str(k)).encode("utf-8"))
+        for t in payload:
+            h.update(("\x1e" + str(t)).encode("utf-8"))
+    h.update(("|topk=%d|maxlen=%d|onnx=%d" % (topk, max_length, int(USE_ONNX))).encode("ascii"))
+    return h.hexdigest()
 
 
 def load_model():
@@ -65,6 +114,23 @@ def load_model():
     mdl.eval()
     _MODEL_CACHE["m"] = (torch, tok, mdl, dev)
     return _MODEL_CACHE["m"]
+
+
+def load_onnx_session():
+    """W26：lazy 加载 onnxruntime 会话 + 对应 tokenizer（只加载一次）。
+    模型文件 = ONNX_DIR/model.onnx，由 export_rerank_onnx.py 导出。
+    缺文件时抛 SystemExit，rerank 会优雅降级回 torch 路径（不改默认）。"""
+    if "s" in _ONNX_SESSION:
+        return _ONNX_SESSION["s"]
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+    onnx_path = os.path.join(ONNX_DIR, "model.onnx")
+    if not os.path.isfile(onnx_path):
+        raise SystemExit("ONNX 模型不存在：%s（先跑 export_rerank_onnx.py）" % onnx_path)
+    tok = AutoTokenizer.from_pretrained(MODEL_DIR)
+    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+    _ONNX_SESSION["s"] = (tok, sess)
+    return _ONNX_SESSION["s"]
 
 
 def _key_of(it):
@@ -116,6 +182,22 @@ def rerank(query, items, topk, max_length=512):
     """
     if not items or not (query or "").strip():
         return []
+    # W26 查询级缓存：键含 query + 全部参数指纹；命中直接返回，不进推理
+    cache_key = None
+    if USE_CACHE:
+        cache_key = _param_fingerprint(query, items, topk, max_length)
+        if cache_key in _QUERY_CACHE:
+            _CACHE_STATS["hit"] += 1
+            return _QUERY_CACHE[cache_key]
+        _CACHE_STATS["miss"] += 1
+    # W26 ONNX 分支（默认 on；KB_RERANK_ONNX=0 回退）：onnxruntime 打分，torch 分支保留作兜底
+    if USE_ONNX:
+        try:
+            return _rerank_onnx(query, items, topk, max_length, cache_key)
+        except SystemExit as e:
+            print("[rerank] ONNX 不可用（%s），回退 torch 路径" % e, file=sys.stderr)
+        except Exception as e:
+            print("[rerank] ONNX 推理异常，回退 torch 路径：%s" % str(e)[:120], file=sys.stderr)
     try:
         torch, tok, mdl, dev = load_model()
     except SystemExit as e:
@@ -152,10 +234,45 @@ def rerank(query, items, topk, max_length=512):
             if k not in best or s > best[k]:
                 best[k] = s
         out = sorted(best.items(), key=lambda x: -x[1])
-        return out[:max(1, int(topk))]
+        out = out[:max(1, int(topk))]
+        if cache_key is not None:
+            _QUERY_CACHE[cache_key] = out
+        return out
     except Exception as e:
         print("[rerank] 推理异常，本次跳过精排：%s" % str(e)[:120], file=sys.stderr)
         return None
+
+
+def _rerank_onnx(query, items, topk, max_length, cache_key):
+    """W26 ONNX 打分：与 torch 分支逐字等价的输入链（_pairs_of / max-pooling），
+    只把 torch 前向换成 onnxruntime；sigmoid 用 numpy（float32），分数保留到
+    Python float。返回结构同 torch 分支 [(key, score), ...] 降序截 topk。"""
+    import numpy as np
+    tok, sess = load_onnx_session()
+    flat = _pairs_of(query, items)
+    if not flat:
+        return []
+    pairs = [[query, t] for _k, t in flat]
+    scores = []
+    for i in range(0, len(pairs), BATCH):
+        part = pairs[i:i + BATCH]
+        enc = tok(part, padding=True, truncation=True, max_length=max_length,
+                  return_tensors="np")
+        logits = sess.run(["logits"], {
+            "input_ids": enc["input_ids"].astype("int64"),
+            "attention_mask": enc["attention_mask"].astype("int64"),
+        })[0].reshape(-1).astype(np.float32)
+        scores.extend((1.0 / (1.0 + np.exp(-logits))).tolist())
+    best = {}
+    for (k, _t), s in zip(flat, scores):
+        s = float(s)
+        if k not in best or s > best[k]:
+            best[k] = s
+    out = sorted(best.items(), key=lambda x: -x[1])
+    out = out[:max(1, int(topk))]
+    if cache_key is not None:
+        _QUERY_CACHE[cache_key] = out
+    return out
 
 
 def _selftest():

@@ -187,3 +187,10 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
   文件看似落地但 `unzip -t` 报 `End-of-central-directory signature not found`。解法：后台任务 +
   `gh api repos/<repo>/actions/artifacts/<id>/zip > file`（`gh api` 无 `--output` 标志，用 shell
   重定向），下载后必做 `unzip -t` 校验完整性，别只看文件大小。
+
+### W26 · ONNX 导出与双库同步（2026-11-19）
+
+- **中文路径 + external_data 写失败**：2.2G 模型导出会拆 external data 文件，直接写中文目录报 `Could not open file ... Constant_659_attr__value`。正解：先导纯 ASCII 中转目录（默认 `F:/_DevCache/w26onnx`），成功后再整目录 cp 到目标。已固化进 `export_rerank_onnx.py` 的两步走，别再直导中文路径。
+- **缺模型/缺依赖必须不崩**：发布版用户既没 ONNX 模型也没 onnxruntime，`rerank` 靠 `except SystemExit`（缺模型）+ `except Exception`（缺 onnxruntime 的 ImportError）双兜底回退 torch，再缺 torch 模型才返 None。真跑三种场景全 `no_crash=True`，别把 ONNX 路径写成裸 `import` 无兜底。
+- **bitwise 等价是伪判据**：ONNX Runtime 与 PyTorch 算子数值实现不同，同一二进制输入 logits 最大差 2.861e-6，跨框架不可能逐位相等。判据应为「排序一致 + sigmoid 分数差 <1e-5」，别再用 bitwise 卡自己。
+- **git add 后必须复扫隐私**：`privacy_scan --git-only` 未 add 时 0 BLOCK 是假象；本轮合入文件 docstring 带库主称谓，未 add 时扫不出，git add 后转 1 BLOCK。正解：脱敏（真名→「作者」）→ git add → 复扫 0 BLOCK 才算过。发布版措辞用「作者拍板」，生产版保留原措辞（合法出口差异）。

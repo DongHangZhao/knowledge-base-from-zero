@@ -139,6 +139,35 @@
 
 ---
 
+## [v1.21.0] - 2026-11-19
+
+### 新增
+- `bge_reranker.py` 接入 ONNX 推理分支（`KB_RERANK_ONNX`，默认 on）：`load_onnx_session()` 懒加载 + `_rerank_onnx()` 走 onnxruntime CPU，torch 原路径逐字保留作兜底。
+- 查询级缓存（`KB_RERANK_CACHE`，默认 off）：键含 query + 全部参数指纹（`_param_fingerprint`），带命中率统计 `cache_stats()` / `reset_cache()`。
+- `export_rerank_onnx.py` 落库：把 bge-reranker-v2-m3 导出成 ONNX 的可复跑脚本，内建「ASCII 中转 → 中文目录」两步走 + skip 幂等守卫 —— 补上此前 docstring 引用但全库不存在的导出能力。
+
+### 修改
+- rerank 默认引擎 torch → ONNX（仅换推理引擎，不动 rerank 开/关本身、不动 W8 T1/T2/T3 分流裁决）。
+
+### 修复
+- （无）
+
+### 决策理由
+- **为何切 ONNX 默认 on**：实测 CPU 冷启动 23.8s→20.4s（省 3.4s）、稳态 3.001s→2.285s（1.31x），排序 3/3 一致、分数差 <1e-5，且缺模型/缺 onnxruntime 自动回退 torch 不崩 —— 纯收益，建了不用等于 0。ONNX Runtime 是 CPU 推理的 production-grade 标准（onnxruntime.ai 官方），业界同款 bge-reranker-v2-m3 的 CPU ONNX 是常规做法。
+- **为何缓存默认 off**：生产检索是 CLI 一次性进程（每次 search 新进程、单次只调一次 rerank），进程内缓存命中率≈0，切 on 只增 hash 开销；业界「cache the head / warm requests 2–3×」前提是常驻服务 + p95 口径，不在 CLI 场景。代码保留，将来上常驻服务再 `KB_RERANK_CACHE=1`。
+- **为何补导出脚本**：docstring 引用了不存在的 `export_rerank_onnx.py`，用户拿到发布版想复现 ONNX 能力会找不到工具 —— 「文件存在≠能力生效」的反面，能力必须可复现闭环。
+- **逐位判据订正**：ONNX 与 torch 跨框架算子数值实现不同，bitwise 逐位相等字面不可达（实测同一二进制输入 logits 差 2.861e-6）；判据订正为「排序一致 + sigmoid 分数差 <1e-5」，留一个数量级余量，既不误判浮点噪声也能抓住真精度退化。
+
+### 已知问题
+- ONNX 模型（2.2G / 173 文件）不入库（GitHub 无 LFS），发布版用户默认回退 torch 路径；要用 ONNX 需自行跑 `export_rerank_onnx.py` 生成模型放 `models/bge-reranker-v2-m3-onnx/`。这是预期降级，不是故障。
+- 缓存代码在库但默认 off（理由见上），CLI 场景无收益。
+- 导出依赖 torch + onnx + onnxscript（`requirements-demo.txt` 未列，属可选能力，缺则不影响核心检索）。
+
+### 对应提交
+- 见本地 tag `v1.21.0` 与 `git log`（commit message 标注 W26 ONNX 切默认）。
+
+---
+
 ## [v1.20.0] - 2026-11-17
 
 ### 新增
