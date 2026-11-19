@@ -112,6 +112,70 @@ flowchart LR
 - 🔴 边界：不替换生产、不推生产 `kb.db` / 真实项目名 / 患者与个人数据；
   服务只绑 `127.0.0.1`，不上云、不对外发布；许可 KBL-1.0、署名 落花飞雪·。
 
+### 可选：容器化部署（一次构建、处处可复现启动）
+
+本地跑通不等于「换台机器还能跑」。这一节把它做成**一条命令起服务**，前置条件只有一条硬要求（数据库要先建好）。
+
+```bat
+:: 前置：先把 demo 库建出来（等价于 5 条命令的第 4 条，只需跑一次）
+python examples\build_demo_index.py
+
+:: 起服务（镜像里不含数据库、不含模型、不含隐私语料）
+docker compose build
+docker compose up -d
+
+:: 检索验证二选一
+:: A. 容器内自测（最稳，不依赖宿主端口转发）
+docker compose exec kb-rest python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8788/search?q=RRF&topk=3&mode=fused', timeout=10).read().decode())"
+:: B. 宿主直接访问（宿主端口 18788；容器内监听 8788，端口映射见 docker-compose.yml）
+curl "http://127.0.0.1:18788/search?q=RRF&topk=3&mode=fused"
+
+:: 停
+docker compose down
+```
+
+> 🔴 **宿主端口为什么是 18788 不是 8788**：Windows 上 8787–8886 常被 WSL/Hyper-V 动态保留
+> （`netsh interface ipv4 show excludedportrange protocol=tcp` 可查），直绑 8788 会 bind forbidden。
+> 所以宿主映射 18788→容器 8788，容器内仍监听 8788。
+>
+> 🔴 **容器内能访问、宿主却 Empty reply 的真因**：`api_server.py` 默认只绑 `127.0.0.1`，
+> 在容器内这意味着只监听**容器自己的 loopback**，Docker 转发从容器外部进来的连接会被秒断
+> （curl 报 `Empty reply`，原始 TCP 探针显示连接建立后 0 字节即断）。
+> compose 里设 `KB_API_HOST=0.0.0.0` 让服务绑容器所有网卡即可解决——
+> 宿主暴露面仍由 `127.0.0.1:18788` 锁死，不等于对外发布。
+> 本地直接 `python api_server.py` 不设该变量时仍是 127.0.0.1，安全默认不变。
+
+**三条前提，缺一条会「起不来 / 能力降级」，都不是 bug：**
+
+| 前提 | 说明 | 缺了会怎样 |
+|---|---|---|
+| `examples/state/demo.db` | 本地构建产物，未进 git | 服务起得来但检索报错 → 先跑 `build_demo_index.py` |
+| `modules/知识库索引/models/` | BGE 模型（bge-small-zh / bge-reranker-v2-m3），只读挂载 | 服务照常起，`fused` 静默退化为关键词链路（**能力降级，不报错**——这正是坑） |
+| Docker + Compose v2 | 需本机有容器运行时 | 无 Docker 时只能跑第 5 条命令的本地方式 |
+
+**镜像里故意没有的东西**（`.dockerignore` 在构建上下文阶段就挡掉，不靠事后扫描）：
+
+- `raw/` 原始语料、个人信息、`.env` / `*.key` / `*.pem` —— 隐私红线，进了镜像层就删不干净（层里只删引用）
+- `*.db`、`modules/知识库索引/models/` —— 走挂载卷，库会天天长、模型 2.3G，烤进去每次重建都是浪费
+- 构建上下文收敛后约 13 MB（代码 + 公开文档），镜像不含 2.3G 模型与 GB 级库
+
+**安全基线**：容器非 root（uid 10001）、根文件系统只读、`/tmp` 走 tmpfs、端口只绑 `127.0.0.1`、健康检查走 `/health`、LLM 环节默认 `off`（凭据只从库外环境变量读，不进镜像）。
+
+**瘦身构建**（只要关键词检索、不要语义向量）：
+
+```bat
+docker build -t kb-rag-engine:slim --build-arg WITH_VECTOR=0 .
+```
+
+> 🔴 未做声明：本卡只交付「可复现启动」。**8 并发 × 24 请求的短测不等于 soak（长时浸泡压测）**，
+> 长时并发压测、SLO 承诺、生产库接入**均未做**，别把这节当成「生产级高并发已验」。
+> 离线自检：`python tools/verify_docker_assets.py`（无 Docker 时也能验上下文隐私、compose 基线、卷挂载）。
+>
+> ⚠️ 中文路径：代码目录名是 `modules/知识库索引`，容器内保持原名（改名要动 `sys.path`，风险更大），
+> 靠 `LANG=C.UTF-8` + `PYTHONUTF8=1` 保证不乱码。若在 **Windows + Docker Desktop** 上挂载含中文的
+> 子路径报错，把模型目录先复制/软链到英文路径再挂载（`volumes` 里换宿主侧路径即可），不用改镜像。
+
+
 ---
 
 ## 一、核心理念：Karpathy LLM Wiki + AI 外置大脑

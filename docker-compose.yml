@@ -1,0 +1,69 @@
+# KB RAG Engine · 可复现启动（W32）
+# -----------------------------------------------------------------------------
+# 用法：
+#   docker compose build          # 构建镜像（不含数据库/模型）
+#   docker compose up -d          # 起服务（宿主 18788 → 容器 8788）
+#   docker compose exec kb-rest python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8788/search?q=RRF&topk=3&mode=fused').read().decode())"   # 容器内自测（最稳）
+#   curl "http://127.0.0.1:18788/search?q=RRF&topk=3&mode=fused"   # 宿主访问（部分 Windows 转发层会 Empty reply，此时用上一条）
+#   docker compose down           # 停服务
+#
+# 🔴 两条前提（缺一条起不来，不是 bug）：
+#   ① 数据库：examples/state/demo.db 是本地构建产物，未进 git。
+#      新环境先跑：python examples/build_demo_index.py
+#   ② 模型（可选）：modules/知识库索引/models/ 下需有 bge-small-zh /
+#      bge-reranker-v2-m3。没有也能起，fused 会退化为 kw 链路（能力降级，不报错）。
+#
+# 🔴 镜像里没有数据库、没有模型、没有 raw 隐私语料 —— 这是设计，不是漏。
+# -----------------------------------------------------------------------------
+services:
+  kb-rest:
+    build:
+      context: .
+      args:
+        # 0 = 瘦身版（无 torch/transformers，仅 kw/substr 链路）
+        WITH_VECTOR: "1"
+    image: kb-rag-engine:${KB_IMAGE_TAG:-local}
+    container_name: kb-rest
+
+    # 只绑回环地址：不对外暴露。要局域网访问先问库主（红线：不上云、不对外发布）
+    ports:
+      # 宿主 18788 → 容器 8788：Windows 上 8787-8886 常被 WSL/Hyper-V 动态保留，
+      # 直绑 8788 会 bind forbidden。容器内仍监听 8788，代码/Dockerfile 不用改。
+      - "127.0.0.1:18788:8788"
+
+    environment:
+      KB_API_PORT: "8788"
+      # 容器内必须绑 0.0.0.0：绑 127.0.0.1 时 uvicorn 只监听容器 loopback，
+      # 从 Docker 端口转发进来的连接会被秒断（Empty reply）。
+      # 宿主暴露面仍由上面 127.0.0.1:18788 锁死，不对外发布。
+      KB_API_HOST: "0.0.0.0"
+      KB_LLM_ENABLED: "0"          # AGENTS §5.11 默认 off，一键可开
+      KB_DEMO_STATE: "/app/examples/state"
+      # 生产库不在此卡范围（不迁生产、不挂生产 kb.db）。确需挂时再加 KB_DB_PATH。
+
+    volumes:
+      # 数据库走卷，只读挂载：容器内改不动母库
+      - ./examples/state:/app/examples/state:ro
+      # 模型走卷，只读挂载：与代码默认路径对齐（bge_reranker 的 MODEL_DIR 是硬编码）
+      - ./modules/知识库索引/models:/app/modules/知识库索引/models:ro
+
+    # 非 root + 只读根文件系统：容器被攻破也改不了镜像内容
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      # 只读根下 /tmp 必须可写（Python 临时文件）。用最保守的短语法：
+      # size 参数在不同 compose 版本的解析行为不一致，这里不写，交给 docker 默认（内存一半）。
+      - /tmp
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8788/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3

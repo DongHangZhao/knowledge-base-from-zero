@@ -67,7 +67,11 @@ class RestCtx(Ctx):
 
 CTX = RestCtx()
 _LOCK = threading.RLock()
-HOST = "127.0.0.1"
+# 默认只绑 127.0.0.1（本地直接跑的安全默认，不上云、不对外发布）。
+# 容器内跑在 Docker 网桥后，必须绑 0.0.0.0 才能让端口转发从容器外部连进来——
+# 否则 uvicorn 只监听容器 loopback，宿主 curl 会「连接建立后 0 字节即断」。
+# 宿主侧暴露面由 compose 的 127.0.0.1:18788 映射锁死，绑 0.0.0.0 不等于对外发布。
+HOST = os.environ.get("KB_API_HOST") or "127.0.0.1"
 PORT = int(os.environ.get("KB_API_PORT") or "8788")
 
 

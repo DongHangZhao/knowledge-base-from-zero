@@ -194,3 +194,13 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - **缺模型/缺依赖必须不崩**：发布版用户既没 ONNX 模型也没 onnxruntime，`rerank` 靠 `except SystemExit`（缺模型）+ `except Exception`（缺 onnxruntime 的 ImportError）双兜底回退 torch，再缺 torch 模型才返 None。真跑三种场景全 `no_crash=True`，别把 ONNX 路径写成裸 `import` 无兜底。
 - **bitwise 等价是伪判据**：ONNX Runtime 与 PyTorch 算子数值实现不同，同一二进制输入 logits 最大差 2.861e-6，跨框架不可能逐位相等。判据应为「排序一致 + sigmoid 分数差 <1e-5」，别再用 bitwise 卡自己。
 - **git add 后必须复扫隐私**：`privacy_scan --git-only` 未 add 时 0 BLOCK 是假象；本轮合入文件 docstring 带库主称谓，未 add 时扫不出，git add 后转 1 BLOCK。正解：脱敏（真名→「作者」）→ git add → 复扫 0 BLOCK 才算过。发布版措辞用「作者拍板」，生产版保留原措辞（合法出口差异）。
+
+### W32 · 容器化部署与宿主访问（2026-11-19）
+
+- **宿主 Empty reply 真因是应用绑 loopback，不是 WSL/Docker 网络**：服务 `HOST="127.0.0.1"` 在容器内只监听容器自己的 loopback，Docker 端口转发从外部连进来的连接建立后 0 字节即断。容器内 `exec` 自测走本地 loopback 正常，会误导人以为转发层坏了。**诊断法**：起一个最小 nginx 容器映射到新端口，宿主 curl 能 200 = 转发通道健康，问题必在应用绑定。本轮为此误判方向、升级 WSL/重装 Docker/换端口折腾一整天，对照实验 10 秒定位。修复：`KB_API_HOST` 环境变量，容器场景设 `0.0.0.0`，默认仍 127.0.0.1。
+- **Docker 官方文档纠偏**：宿主→容器端口转发走 `com.docker.backend` 的共享内存通道进 VM，**不走虚拟网卡路由**。所以「宿主 ping 不通容器 IP / 无 172.18 路由」是预期行为，不能当成根因。
+- **Windows 宿主端口避开保留段**：`netsh interface ipv4 show excludedportrange protocol=tcp` 显示 8787–8886 被 WSL/Hyper-V 动态保留，直绑 8788 报 `bind: forbidden access permissions`。改绑 18788→容器 8788，容器内代码不动。
+- **镜像源只加速 registry，管不到容器内 pip**：配 daocloud 后 `docker pull` 快，但 build 里 `pip install` 仍走默认 PyPI（85~200KB/s，torch 196MB 下 174s）。要加速容器 pip 得在 Dockerfile 里显式加 `--index-url`，别指望 daemon 的 registry-mirrors。
+- **`# syntax=docker/dockerfile:1.6` 会强制拉前端镜像**：BuildKit 遇到这行去 Docker Hub 拉 `docker/dockerfile:1.6`，国内 IPv6 超时。本 Dockerfile 没用 1.6 特有语法，注释掉即可。
+- **`snapshot.py` 生成的 `_versions/` 不会自动进 gitignore**：发版快照含全量源码副本，必须显式加进 `.gitignore`，否则 `git add .` 会把整个快照塞进仓库。
+- **双库范围要对账再同步**：REST 服务只存在于发布库，生产库无同源 `api_server.py`（只有 site-packages 里的第三方同名文件）。容器化资产本就只在发布库建，不构成「缺项未同步」；W32 卡范围从一开始就限定在 kb-from-zero，不越界回流生产库。

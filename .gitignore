@@ -26,6 +26,9 @@ kb-hub/rag.json
 kb-hub.exe
 kb-from-zero.zip
 
+# 版本快照：snapshot.py --bump 生成的 L1 备份目录，含全量源码副本，只留本地不入库
+_versions/
+
 # OS noise
 .DS_Store
 Thumbs.db
