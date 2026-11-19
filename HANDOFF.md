@@ -204,3 +204,5 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - **`# syntax=docker/dockerfile:1.6` 会强制拉前端镜像**：BuildKit 遇到这行去 Docker Hub 拉 `docker/dockerfile:1.6`，国内 IPv6 超时。本 Dockerfile 没用 1.6 特有语法，注释掉即可。
 - **`snapshot.py` 生成的 `_versions/` 不会自动进 gitignore**：发版快照含全量源码副本，必须显式加进 `.gitignore`，否则 `git add .` 会把整个快照塞进仓库。
 - **双库范围要对账再同步**：REST 服务只存在于发布库，生产库无同源 `api_server.py`（只有 site-packages 里的第三方同名文件）。容器化资产本就只在发布库建，不构成「缺项未同步」；W32 卡范围从一开始就限定在 kb-from-zero，不越界回流生产库。
+- **后端修好了页面仍报「服务未启动」= 前端写死端口**：v1.22.0 修了 `KB_API_HOST` 后 curl `/health` 200，但浏览器仍红字。根因是 `examples/index.html` 的 `const API` 写死 `127.0.0.1:8788`，页面从 18788 打开却去请求宿主不存在的 8788。**诊断法**：看页面报错里显示的端口，和 `docker ps` 的宿主映射端口一比就知道——别再往服务端/网络层找。正解：http(s) 下用 `location.origin` 同源请求，`file://` 才回退固定端口；同时给 HTML 加 `no-store`，避免浏览器缓存旧页面掩盖修复。
+- **`0.0.0.0` 不能拿来访问**：它是服务端的「监听所有地址」，客户端要连具体地址（本机 `127.0.0.1:<宿主映射端口>`）。用户贴 `http://0.0.0.0:8788/` 报 `ERR_ADDRESS_INVALID` 属预期，不是服务故障。
