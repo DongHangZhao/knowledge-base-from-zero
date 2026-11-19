@@ -103,7 +103,9 @@ def index():
 
     index.html 也支持 file:// 双击（CORS 已开），两个入口等价。
     """
-    return FileResponse(os.path.join(_REPO, "examples", "index.html"), media_type="text/html")
+    # no-store：容器重建/页面修复后，浏览器刷新必须拿到当前版本，不吃旧缓存。
+    return FileResponse(os.path.join(_REPO, "examples", "index.html"), media_type="text/html",
+                        headers={"Cache-Control": "no-store"})
 
 
 @APP.get("/health")

@@ -4,7 +4,7 @@
 #   docker compose build          # 构建镜像（不含数据库/模型）
 #   docker compose up -d          # 起服务（宿主 18788 → 容器 8788）
 #   docker compose exec kb-rest python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8788/search?q=RRF&topk=3&mode=fused').read().decode())"   # 容器内自测（最稳）
-#   curl "http://127.0.0.1:18788/search?q=RRF&topk=3&mode=fused"   # 宿主访问（部分 Windows 转发层会 Empty reply，此时用上一条）
+#   curl "http://127.0.0.1:18788/search?q=RRF&topk=3&mode=fused"   # 宿主访问（页面也走这个同源地址；0.0.0.0 是监听地址，不能拿来访问）
 #   docker compose down           # 停服务
 #
 # 🔴 两条前提（缺一条起不来，不是 bug）：

@@ -86,12 +86,17 @@
   <footer>
     只绑 127.0.0.1 · 生产检索不经过框架，适配器仅互操作/演示 ·
     许可 KBL-1.0 · 署名 落花飞雪·<br>
-    启动服务：<code>python modules/知识库索引/api_server.py</code>
+    启动服务：<code>python modules/知识库索引/api_server.py</code>（本地直跑 · 8788）<br>
+    或 <code>docker compose up -d</code> 后访问 <code>http://127.0.0.1:18788/</code>（容器 · 宿主只绑回环）
   </footer>
 </div>
 
 <script>
-const API = "http://127.0.0.1:8788";
+// 同源优先：http(s) 下跟随页面地址——本地直跑(8788)/容器映射(18788)都不用改；
+// file:// 双击打开时没有 origin，回退到本地直跑默认端口。
+const API = (location.protocol === "http:" || location.protocol === "https:")
+  ? location.origin
+  : "http://127.0.0.1:8788";
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -159,7 +164,7 @@ async function health() {
     $("svc").textContent = "服务在线 · db=" + d.db + " · LLM " + (d.llm_enabled ? "on" : "off");
   } catch (e) {
     $("dot").className = "dot bad";
-    $("svc").textContent = "服务未启动（127.0.0.1:8788）";
+    $("svc").textContent = "服务未启动（" + API.replace(/^https?:\/\//, "") + "）";
   }
 }
 
