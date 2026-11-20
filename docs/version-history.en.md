@@ -163,14 +163,14 @@ pipeline, not in memory.**
 
 ## Appendix A · Repository releases
 
-18 tags, 17 of which have a Release (`v1.14.2` had a tag only, now backfilled).
+19 tags, all with a Release (`v1.14.2` had a tag only until its Release was backfilled on 2026-11-20).
 
 | Tag | Date | One line | Assets |
 |---|---|---|---|
 | v1.3.0 | 2026-10-22 | KB search tab + bilingual UI switch | 4 |
 | v1.3.1 | 2026-10-22 | rerank stage + zero-hit banner | 4 |
 | v1.4.0 | 2026-10-27 | Retrieval methodology + usage guide (bilingual) | 4 |
-| v1.14.2 | 2026-11-03 | Engine merged into the repo + duplicate-block cleanup | tag only |
+| v1.14.2 | 2026-11-03 | Engine merged into the repo + duplicate-block cleanup | 4 (backfilled 2026-11-20) |
 | v1.15.0 | 2026-11-04 | Systematic engineering T01~T05 + two defaults rolled back | 4 |
 | v1.16.0 | 2026-11-04 | 93% evaluation contamination removed | 4 |
 | v1.17.0 | 2026-11-09 | Standalone knowledge-graph subsystem v1.0.0 | 4 |
@@ -185,6 +185,7 @@ pipeline, not in memory.**
 | v1.23.1 | 2026-11-20 | Release must ship 5 assets (mechanized) | 5 |
 | v1.23.2 | 2026-11-20 | Assets gate threshold fix | 5 |
 | v1.23.3 | 2026-11-20 | Removed apks that never belonged to old versions | 5 |
+| v1.24.0 | 2026-11-20 | **History restored and completed**: CHANGELOG backfill + this document + completed version table + a Release for v1.14.2 | 5 |
 
 > "4" = source zip + Windows + Linux + macOS; "5" adds the Android apk (`kb-hub/android/` exists
 > only from v1.20.0). Releases before v1.20.0 originally carried only GitHub's auto-generated
