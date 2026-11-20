@@ -2,13 +2,21 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.23.3** (retrieval engine v1.17.0: a document-side question channel on the recall path — each document gets an offline index of "how a user might ask this", lifting correct-document pool entry from 51 to 70 (+19.39pp, zero regressions) at +19ms; on by default, `KB_QCH=off` disables it. This release also rejects title-derived rule questions (independent set top1 40→35, MRR −0.20): merging banks is not weighting)
+Current version: **v1.24.0** (history restored and completed — the root CHANGELOG is backfilled for `v1.3.0`~`v1.15.0`; a new *Version history* document covers six phases, all 18 tags, 49 measured engine entries and the rejected approaches; the RELEASE version table is completed from its `v1.4.0` gap; a Release now exists for `v1.14.2`. The v1.23.0 document-side question channel remains: correct-document pool entry 51→70 (+19.39pp, zero regressions, +19ms), `KB_QCH=off` disables it)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 
 This repository offers two download options under **Releases**. Pick one.
 
-## What's new in v1.4.0
+## What's new in v1.24.0
+
+- **History restored and completed**: the root [`CHANGELOG.md`](CHANGELOG.md) now covers `v1.3.0` / `v1.3.1` / `v1.4.0` / `v1.14.2` / `v1.15.0` with repository-level entries; a new [`docs/version-history.en.md`](docs/version-history.en.md) lays out the whole path from engine `v1.0.0` to today — six phases, 49 engine entries, and a list of rejected approaches.
+- **Version history table completed**: it previously stopped at `v1.4.0`, leaving a dozen versions blank. Now it goes up to the latest.
+- **A Release for `v1.14.2`**: that tag had a tag but no Release.
+
+> To see how this project grew, read [`docs/version-history.en.md`](docs/version-history.en.md).
+
+## Method documents (since v1.4.0)
 
 New document: **Designing a Retrieval Layer, and Proving It Works** — [`docs/retrieval-engine.en.md`](docs/retrieval-engine.en.md) / [`docs/检索层设计与评测.md`](docs/检索层设计与评测.md), published in both languages. It is the first document here to answer two questions together: how a retrieval layer should be designed, and how you prove that it works.
 
@@ -138,6 +146,22 @@ with all paths written as `~/my-knowledge-base` and every `exists` set to `false
 
 | Version | Date | Changes |
 |---|---|---|
+| v1.24.0 | 2026-11-20 | **History restored and completed**: root CHANGELOG backfilled with `v1.3.0` ~ `v1.15.0` entries; new *Version history* document (six phases / 49 engine entries / rejected approaches); this table completed from its `v1.4.0` gap up to the latest; a Release created for `v1.14.2` |
+| v1.23.3 | 2026-11-20 | Removed the apk that had been attached to nine Releases (`v1.3.0`–`v1.19.0`) — those tags contain no `kb-hub/android/` (the Android shell only entered the repo at v1.20.0), so no Android build ever existed for them; the asset gate now checks 4 assets for pre-v1.20.0 versions |
+| v1.23.2 | 2026-11-20 | Asset gate source-zip size floor 200 KB → 100 KB (older source zips were genuinely small and should not be flagged); backfilled the v1.23.1 commit hash |
+| v1.23.1 | 2026-11-20 | **Release mechanism fix**: `release.yml` rewritten as one pipeline (build → upload → self-check); a failed build now means no Release at all; added `tools/release_assets_gate.py`; `publish_to_github.bat` reduced to push-only |
+| v1.23.0 | 2026-11-20 | **Document-side question channel** on the recall path: each document gets an offline index of "how a user might ask this" (separate DB, no rebuild), fused into retrieval via FTS5 + vector; correct-document pool entry 51 → 70 (+19.39pp), zero regressions, +19ms. Same release rejects title-derived rule questions (top1 40 → 35, MRR −0.20): merging banks is not weighting |
+| v1.22.1 | 2026-11-19 | Fixed `Failed to fetch` under container port mapping: same-origin API + `Cache-Control: no-store` |
+| v1.22.0 | 2026-11-19 | **Containerized deployment**: `Dockerfile` (non-root / `WITH_VECTOR` toggle) + `docker-compose.yml` (loopback binding, read-only model mount, read-only root filesystem) + build-context privacy gate + 8 offline checks |
+| v1.21.0 | 2026-11-19 | rerank switched to **ONNX** inference (CPU cold start 23.8s → 20.4s, steady state 1.31x, ranking identical 3/3, automatic torch fallback) + query-level cache (off by default) + ONNX export script |
+| v1.20.0 | 2026-11-17 | **Multi-platform release assets**: source zip + Windows exe + Linux + macOS + Android apk; new `kb-hub/android/` subproject (p4a webview bootstrap). Every earlier Release had only GitHub's auto-generated source archive |
+| v1.19.0 | 2026-11-17 | Two-repository convergence (production fixes merged back), attribution unified, `outputs/` excluded from de-identification scope; fixed a false-red C7 gate (`use_cache` not synced, selftest 8/1) |
+| v1.18.0 | 2026-11-11 | **LLM capability layer, engineered**: online-entry guard, edge quality audit, frozen-human-title paired rewrite A/B (McNemar exact p), reporting, 429 stress probe, resumable batch runs; plus an idempotent production → repo mirror script |
+| v1.17.1 | 2026-11-09 | Knowledge-graph subsystem v1.0.1: gate reporting fixed — a sandbox cleanup no longer swallows the evaluation section |
+| v1.17.0 | 2026-11-09 | **Standalone knowledge-graph subsystem v1.0.0**: de-identified, recomputable, gated; decoupled from the main index so it can be rebuilt and rolled back on its own |
+| v1.16.0 | 2026-11-04 | Cleaned 93% evaluation contamination + archived the graph experiment + domain lexicon extraction (`eval_rag` was writing eval queries into the production `query_log`) |
+| v1.15.0 | 2026-11-04 | First systematic engineering pass after the engine was merged in: tests triaged + first offline CI, incremental closure, three-layer query rewriting, productization trio, graph 1pt scaffolding; MCP server exposure + evaluation harness extraction. Two unvalidated defaults rolled back (L0 rewriting / graph 1pt) |
+| v1.14.2 | 2026-11-03 | **Retrieval engine merged into this repository** (three paths + rerank + cross-lingual routing, all machine paths de-identified) + duplicate-block cleanup (junk blocks 3.43% → 1.67%, full rechunk 116,150 → 111,228 blocks) + first offline CI |
 | v1.4.0 | 2026-10-26 | New document, **Designing a Retrieval Layer, and Proving It Works** (both languages): the three-path retrieval design, tuning RRF k on real data (60 → 2), a full post-mortem of a rerank stage that made results worse (degradations 32 → 1; code kept but disabled by default), an evaluation method built on 100 labelled queries plus A/B discipline, engineering practices (concurrent write lock / backup health gate / regression suite), and selected pitfalls; README doc index updated |
 | v1.3.1 | 2026-10-22 | The search tab gains a **rerank stage** (bge-reranker-v2-m3, a local cross-encoder; Hybrid → RRF → rerank → top-k, the 2026 production gold standard): result cards show the rerank score, short queries (≤4 characters) skip rerank to preserve literal-lookup sensitivity, and an all-low-score pool reports "nothing found in the library" instead of returning edge-case documents; zero-hit / edge-case queries show a ⚠️ banner (rerank threshold + query-term coverage); "Ask KB" shows warnings and the citation table; hub exe rebuilt |
 | v1.3.0 | 2026-10-21 | New **🔍 KB Search** tab (three-pipeline RAG: FTS5 keywords + BGE semantic vectors + character-level substring; "Ask KB" assembles a cited context pack), new `/api/rag` endpoint (config-driven, degrades gracefully when unconfigured); **one-click Chinese/English UI switch** (all UI copy in an I18N dictionary, persisted in localStorage, selftest extended with language assertions); tabs 9 → 10 |

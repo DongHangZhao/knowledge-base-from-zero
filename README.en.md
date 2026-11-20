@@ -34,6 +34,7 @@ What's in this repository:
 | Example templates | `templates/` | Blank starting points for AGENTS.md / wiki / modules / prompt assets |
 | Advanced docs | `docs/` | Architecture, **dual-pipeline**, **retrieval design and evaluation**, module overview, skill workbench, collaboration, licensing, FAQ |
 | User guide | `docs/usage.en.md` | What to actually do once you have the repo (hub / templates / tools / letting AI take over) |
+| Version history | `docs/version-history.en.md` | Engine v1.0.0 → latest: six phases, 49 measured engine entries, and the approaches that were rejected — how this project actually grew |
 | Release & install guide | `RELEASE.en.md` | How to use the zip / exe from Releases |
 | Policy enforcement tools | `tools/` | Example inventory generator, privacy scanner, bilingual checker |
 | Knowledge graph subsystem (GraphRAG) | `modules/知识图谱/` | Standalone, de-identified, presentable: NPMI co-occurrence graph + PPR/1hop/hybrid search + single-file visualization; LLM capability layer off by default, delivery gate machine-judged |

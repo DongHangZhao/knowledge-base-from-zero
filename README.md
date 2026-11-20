@@ -43,6 +43,7 @@
 | 示例模板 | `templates/` | AGENTS.example.md / wiki / modules / 提示词资产 的空白示例 |
 | 进阶文档 | `docs/` | 架构总览、**双链路体系**、**检索层设计与评测**、模块总览、技能工作台、协作规范、开源守则、FAQ |
 | 使用指南 | `docs/使用指南.md` | 拿到仓库后怎么真正用起来（门户 / 模板 / 工具 / 让 AI 接手） |
+| 版本发展史 | `docs/版本发展史.md` | v1.0.0 → 最新：六个阶段、49 段引擎实测、被否决方案清单 —— 这个项目怎么一步步长成现在这样 |
 | 发布与安装说明 | `RELEASE.md` | Releases 里的 zip / exe 怎么下载安装 |
 | 守则执行工具 | `tools/` | 示例清单生成器、隐私扫描器、双语校验器 |
 | 检索引擎（RAG Index Engine） | `modules/知识库索引/` | 三链路混合检索核心：FTS5 ⊕ BGE ⊕ 字级 substring + reranker，详见其 `README.md` |

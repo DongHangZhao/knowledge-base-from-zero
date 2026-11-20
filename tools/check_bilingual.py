@@ -23,6 +23,8 @@ PAIRS = [
     # 但 PAIRS 里没有它 → check_bilingual 报到 19/19 全过，其实根本没校验这一对。
     # 凡是新增双语文档，必须同步加进本表，否则发布闸门覆盖不到。
     ("docs/检索层设计与评测.md", "docs/retrieval-engine.en.md"),
+    ("docs/版本发展史.md", "docs/version-history.en.md"),
+    ("docs/使用指南.md", "docs/usage.en.md"),
     ("templates/AGENTS.example.md", "templates/AGENTS.example.en.md"),
     ("templates/modules/README.example.md", "templates/modules/README.example.en.md"),
     ("templates/wiki/可复用模块/总览.example.md", "templates/wiki/可复用模块/总览.example.en.md"),
@@ -58,6 +60,41 @@ for zh, en in PAIRS:
 print("-" * 72)
 print("成对且双向切换: %d / %d" % (ok, len(PAIRS)))
 
+# 🔴 自动发现：本脚本靠 PAIRS 硬编码，漏加一行就会「全绿但没校验」（v1.4.0 与 v1.23.4
+#    两次踩同一个坑）。所以反向扫一遍：凡是 docs/ 根层与 templates/ 下、**自己头部声明了
+#    English 链接**的中文文档，就必须出现在 PAIRS 里；出现了却没进表 = 假绿，判 FAIL。
+#    单语工程页（头部没有 English 链接）只提示，不算失败。
+covered = {zh for zh, _ in PAIRS}
+uncovered, unmanaged = [], []
+for root in ("docs", "templates"):
+    for dp, dns, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith(".md") or fn.endswith(".en.md"):
+                continue
+            p = os.path.join(dp, fn).replace("\\", "/")
+            if p in covered:
+                continue
+            try:
+                # 中文文档里声明双语的写法是 `[English](xxx.en.md)`
+                claims_bilingual = "[English]" in head(p)
+            except OSError:
+                claims_bilingual = False
+            (unmanaged if claims_bilingual else uncovered).append(p)
+
+bad_pairs = len(PAIRS) - ok
+if unmanaged:
+    print("\n[FAIL] 自称双语但没写进 PAIRS（校验不到的假绿）：")
+    for p in unmanaged:
+        print("   " + p)
+if uncovered:
+    print("\n[提示] 未纳入校验的单语文档（如确认单语可忽略）：")
+    for p in uncovered:
+        print("   " + p)
+
+ok_all = bad_pairs == 0 and not unmanaged
+print("\n结论: %s（成对 %d/%d，未纳管 %d）"
+      % ("PASS" if ok_all else "FAIL", ok, len(PAIRS), len(unmanaged)))
+
 allmd = []
 for dp, dns, fns in os.walk("."):
     dns[:] = [d for d in dns if d not in {".git", "__pycache__"}]
@@ -69,3 +106,6 @@ en_md = [m for m in allmd if m.endswith(".en.md")]
 zh_md = [m for m in allmd if not m.endswith(".en.md")]
 print("仓库 md 总数: %d（中文 %d + 英文 %d）；另有 LICENSE / NOTICE 无扩展名，不计入"
       % (len(allmd), len(zh_md), len(en_md)))
+
+import sys
+sys.exit(0 if ok_all else 1)
