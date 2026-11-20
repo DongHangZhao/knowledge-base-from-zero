@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.24.0** (history restored and completed — the root CHANGELOG is backfilled for `v1.3.0`~`v1.15.0`; a new *Version history* document covers six phases, all 18 tags, 49 measured engine entries and the rejected approaches; the RELEASE version table is completed from its `v1.4.0` gap; a Release now exists for `v1.14.2`. The v1.23.0 document-side question channel remains: correct-document pool entry 51→70 (+19.39pp, zero regressions, +19ms), `KB_QCH=off` disables it)
+Current version: **v1.24.0** (history restored and completed — the root CHANGELOG is backfilled for `v1.3.0`~`v1.15.0`; a new *Version history* document covers six phases, all 19 tags, 49 measured engine entries and the rejected approaches; the RELEASE version table is completed from its `v1.4.0` gap; a Release now exists for `v1.14.2`. The v1.23.0 document-side question channel remains: correct-document pool entry 51→70 (+19.39pp, zero regressions, +19ms), `KB_QCH=off` disables it)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 
