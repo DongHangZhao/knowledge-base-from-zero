@@ -243,3 +243,9 @@ python tools/make_release_notes.py --version 1.17.1 --changelog CHANGELOG.md --c
 - **补历史版本的源码包必须按 tag 打**：用当前工作区打一份挂到老 tag 上，等于把新代码冒充成老版本。
   `make_release_zip.py --ref <tag>` 直接 `git cat-file blob` 读内容，工作区零改动；
   打完必须解压核对包内 `VERSION` 与 tag 一致。
+- **别给老版本挂「不属于它的产物」**：11-17 补历史时给 v1.3.0~v1.19.0 的 9 个 Release 都挂了
+  同一份 apk（11,077,417 字节，sha 全同），但那些 tag 的源码里根本没有 `kb-hub/android/`
+  （Android 壳 v1.20.0 才进仓库）——等于给「没有 Android 版的版本」发了个 Android 包。
+  这种错不会报错、不会红，只会让用户下到一个和版本对不上的文件。**判据：挂任何资产前先
+  `git ls-tree -r --name-only <tag> | grep <目录>`，确认这个 tag 真有那部分代码。**
+  2026-11-20 已全部删除，库主裁决「不用补」。

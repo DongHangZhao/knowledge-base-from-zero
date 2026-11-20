@@ -50,7 +50,9 @@ REQUIRED = {
     "kb-hub-android.apk": 5 * 1024 * 1024,   # Android，约 10.6 MB
 }
 
-# 老版本（v1.20.0 之前）没有 Android 壳，apk 属于「按版本可获得性可选」。
+# Android 壳（kb-hub/android/）是 v1.20.0 才进仓库的：更早的 tag 源码里没有这棵目录，
+# 因此那些版本**本就不该有 apk**。2026-11-20 已把 9 个老版本上误挂的 apk 全部删除
+# （那是 11-17 补历史时上传的当前产物，与该 tag 内容无关）。
 APK_OPTIONAL_BEFORE = (1, 20, 0)
 
 
@@ -98,7 +100,7 @@ def check_one(tag, assets, require_apk=True):
         # apk 只对「该版本确实没有 Android 壳」的老版本放宽；
         # 已经挂了的就必须核体积，不能因为版本号老就跳过。
         if name == "kb-hub-android.apk" and not require_apk and name not in have:
-            rows.append("  %-22s %s" % (name, "— 该版本无 Android 壳，按需可选"))
+            rows.append("  %-22s %s" % (name, "— 该版本源码无 Android 壳，不提供 apk"))
             continue
         if name not in have:
             missing.append(name)
