@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE.md) ｜ **English**
 
-Current version: **v1.23.0** (retrieval engine v1.17.0: a document-side question channel on the recall path — each document gets an offline index of "how a user might ask this", lifting correct-document pool entry from 51 to 70 (+19.39pp, zero regressions) at +19ms; on by default, `KB_QCH=off` disables it. This release also rejects title-derived rule questions (independent set top1 40→35, MRR −0.20): merging banks is not weighting)
+Current version: **v1.23.1** (retrieval engine v1.17.0: a document-side question channel on the recall path — each document gets an offline index of "how a user might ask this", lifting correct-document pool entry from 51 to 70 (+19.39pp, zero regressions) at +19ms; on by default, `KB_QCH=off` disables it. This release also rejects title-derived rule questions (independent set top1 40→35, MRR −0.20): merging banks is not weighting)
 License: **KBL-1.0** — free to use, free to modify, **no commercial use**; attribution and source link required when redistributing.
 See [`LICENSE`](LICENSE) / [`LICENSE.zh-CN.md`](LICENSE.zh-CN.md) / [`NOTICE.en.md`](NOTICE.en.md).
 

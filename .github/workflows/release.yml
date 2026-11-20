@@ -1,9 +1,16 @@
 name: release
 
-# tag 驱动发版：推 v* tag → 从 CHANGELOG 抽该版本段 → gh release create。
-# 🔴 核心保障是「找不到版本段就直接 fail」：宁可没有 Release，也不出一个正文空白的
-#    Release（用户点进来看到 "No release notes"，比不发版更伤）。
-# 🔴 不附 exe：二进制是手工产物（体积大、需本机签名验证），走人工上传，CI 不碰。
+# tag 驱动发版：推 v* tag → 构建多平台产物 → 挂 5 个资产建 Release。
+#
+# 🔴 2026-11-20 重写（根因见 docs/decisions/ADR-2026-11-20-发版必带全套资产.md）：
+#    旧版只做 `gh release create --notes-file`，一个资产都不传，注释还写着
+#    「不附 exe：二进制是手工产物，走人工上传，CI 不碰」。人工上传没有任何清单
+#    与门禁，完全靠记忆 → v1.21.0 / v1.22.0 / v1.22.1 / v1.23.0 连续 4 版漏资产，
+#    而 CI 全绿、CHANGELOG 还写着「已挂载全部 Release」。
+#    现在的硬约束：**构建没成功就不建 Release**（宁可没有 Release，
+#    也不出一个只有源码、看起来却发了版的残缺 Release）。
+#
+# 结构：assets(=build-assets.yml) → release(下载全部 artifact + 上传 + 自检)
 # 回滚：删掉 tag 与 Release 即可，本工作流不改动任何代码。
 
 on:
@@ -11,27 +18,49 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发版的 tag（如 v1.23.0）"
+        required: true
 
 permissions:
   contents: write
 
 jobs:
+  # ---------- 1) 构建 5 个资产（失败则 release job 不启动）----------
+  assets:
+    uses: ./.github/workflows/build-assets.yml
+    with:
+      ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+  # ---------- 2) 建 Release 并挂上全部资产 ----------
   release:
+    needs: assets
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 版本一致性门禁（六处口径 + 根 CHANGELOG 顶段）
+      - name: 解析目标 tag
         run: |
           set -euo pipefail
-          python tools/release_gate.py --check --tag "$GITHUB_REF_NAME"
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "target tag=$TAG"
+
+      - name: 版本一致性门禁（六处口径 + 根 CHANGELOG 顶段）
+        run: python tools/release_gate.py --check --tag "$TAG"
+
+      - name: 隐私终审（CI 只有 L1+L3；本地词表深度扫描仍是发版前必做）
+        run: python tools/privacy_scan.py --root . --git-only --no-assets
 
       # 🔴 2026-11-10 修：原来不传 --changelog，默认读 modules/知识库索引/CHANGELOG.md，
       #    而该文件最高只到 v1.16.0 —— 推 v1.17.x tag 必被 --check 拒发（找不到版本段）。
@@ -39,20 +68,49 @@ jobs:
       - name: 抽 Release 正文（根 CHANGELOG 无该版本段 → 失败）
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "tag=$GITHUB_REF_NAME version=$VERSION"
           python tools/make_release_notes.py --version "$VERSION" --changelog CHANGELOG.md --check
           python tools/make_release_notes.py --version "$VERSION" --changelog CHANGELOG.md --out notes.md
           echo "--- notes.md 前 10 行 ---"
           head -10 notes.md
           test -s notes.md
 
-      - name: 创建 GitHub Release
+      - name: 取回构建产物（5 个资产，缺任一则失败）
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: asset-*
+          merge-multiple: true
+
+      - name: 清点资产（上传前先把名字核对死）
+        run: |
+          set -euo pipefail
+          ls -la dist/
+          for f in kb-from-zero.zip kb-hub.exe kb-hub-linux kb-hub-macos kb-hub-android.apk; do
+            test -s "dist/$f" || { echo "[FAIL] 缺少产物 dist/$f"; exit 1; }
+          done
+          echo "5 个产物齐全"
+
+      - name: 创建 GitHub Release 并上传全部资产
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          gh release create "$TAG" \
+            --title "$TAG" \
             --notes-file notes.md \
-            --verify-tag
+            --verify-tag \
+            dist/kb-from-zero.zip \
+            dist/kb-hub.exe \
+            dist/kb-hub-linux \
+            dist/kb-hub-macos \
+            dist/kb-hub-android.apk
+
+      # 🔴 收口自检：`gh release create` 返回 0 只代表 API 接受了请求，
+      #    真正算不算发版成功要看资产是不是真的挂上去了。这里再核一遍，
+      #    不通过就让 CI 变红（Release 已在，红着能被看见，比静默残缺好）。
+      - name: 资产完整性自检（缺项则 CI 红）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python tools/release_assets_gate.py --tag "$TAG"

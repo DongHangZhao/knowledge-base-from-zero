@@ -139,6 +139,69 @@
 
 ---
 
+## [v1.23.1] - 2026-11-20
+
+> 主题：**发版机制修复**——把「Release 必须带 5 个资产」从人的记忆搬进流水线。
+
+### 新增
+
+- **`tools/release_assets_gate.py`**：Release 资产完整性门禁（只读）。
+  `--tag V` 核单个版本、`--all` 出全量矩阵，按名核 5 个资产 + 体积下限，缺任一 rc=1。
+  既做 CI 收口自检，也做历史体检。
+
+### 修改
+
+- **`.github/workflows/release.yml` 重写：发版 = 构建 + 上传 + 自检，一体**。
+  新增 `assets` job（调用 `build-assets.yml` 这个 reusable workflow，产出源码包 / Windows /
+  Linux / macOS / Android 五件），`release` job `needs: [assets]`，下载全部 artifact 后
+  `gh release create ... 5 个资产`，最后跑 `release_assets_gate --tag` 回查。
+  **构建失败就不建 Release**：宁可红着不发，也不要出一个只有源码、看起来却发了版的残缺 Release。
+- **`build-assets.yml` 改为 reusable workflow**（`workflow_call`），保留 `workflow_dispatch`
+  单独触发（用于「构建一次补发历史」）；Windows 产物名 `kb-hub-windows.exe` → `kb-hub.exe`，
+  与 Release 上的资产名对齐。
+- **`tools/make_release_zip.py` 支持 `--ref <tag>`**：按 git 对象打包，工作区零改动，
+  供补历史版本时保证「源码包内容对应各自 tag」。
+- **`release_gate.py --check` 通过后不再等于「发版完成」**：判据改为
+  `release_assets_gate --tag <tag>` 返回 0。
+
+### 修复
+
+- **v1.21.0 / v1.22.0 / v1.22.1 / v1.23.0 四个 Release 全部补挂 5 个资产**（源码包 + 三平台桌面 + APK）。
+  此前这四个版本只有 GitHub 自动生成的 `Source code (zip/tar.gz)`，而 CI 全绿、CHANGELOG 还写着
+  「已挂载全部 Release」。
+- **`make_release_zip.py` 中文路径静默丢失**：`git ls-tree` 默认 `core.quotepath=true`，
+  把 `modules/知识库索引/` 打成八进制转义字符串，按扩展名过滤时整棵中文目录被丢掉——
+  v1.21.0 首打只收到 69 个文件（正确 203），且 zip 打开看不出异常。改为 `-c core.quotepath=false`。
+- **`VERSION` 与 `Dockerfile` 从未进过发布包**：白名单只认 `LICENSE/NOTICE/.gitignore`，
+  两个无扩展名文件一直被过滤，用户解压后既不知道版本、也没法 `docker build`。
+- **`_versions/` 排除出源码包**：本地发版快照里的 `.md` 正好在发布白名单内，
+  不排除会把含真实评测数据的快照打进公开 zip。
+
+### 决策理由
+
+- **为什么不允许「构建失败就降级发 4 个」**：残缺 Release 比没有 Release 更糟——用户看到版本存在
+  但下不到东西，维护者以为发过了。这次连续四版漏发的直接成因，就是「不传资产」被当成一个
+  可接受的、由人兜底的例外。
+- **为什么推翻旧注释「CI 不碰二进制，走人工上传」**：那段注释本身是问题的源头。它让「不传资产」
+  看起来是有意设计，于是没人去查少传了什么。人工上传没有任何清单与门禁，**必然会被漏**——
+  11-17 那次「10 个历史 Release 全部补齐」做得很完整，但它只覆盖执行的当下，下一版照旧漏。
+  隐私方面的顾虑由 CI 内的 `privacy_scan --git-only --no-assets`（L1+L3）兜底，
+  本地带词表深度扫描仍是发版前必做项，但**不再作为「上传」的前置阻塞**——阻塞点落在记忆上就会漏。
+- **为什么补历史的源码包用 `--ref` 而不是重打当前工作区**：后者等于把新代码冒充成老版本，
+  是最隐蔽的作弊。打完还要解压核对包内 `VERSION` 与 tag 一致。
+
+### 已知问题
+
+- Android 构建链依赖外网下载 p4a / NDK / SDK，失败则整次发版不发（有意为之，构建链坏了应先修）。
+- CI 隐私门只有 L1+L3，词表按红线不入库；本地深度扫描仍需人跑一次，CI 绿 ≠ 可对外发布。
+- 二进制每次重新构建，sha 会变；不提供跨版本逐位一致的承诺。
+
+### 对应提交
+
+- （本轮 commit 后回填）
+
+---
+
 ## [v1.23.0] - 2026-11-20
 
 > 主题：**召回侧补一路「文档侧问句」通道**，并把评估方法学的一条硬教训写进决策记录。
