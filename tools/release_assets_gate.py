@@ -41,8 +41,9 @@ import subprocess
 import sys
 
 # 资产名 → 最小体积（字节）。体积下限按实际产物的一半左右取，只拦空壳/截断。
+# 源码包下限取 100 KB：早期版本文件少（v1.3.x 只有 ~170 KB），阈值定太高会误报。
 REQUIRED = {
-    "kb-from-zero.zip": 200 * 1024,      # 源码包，约 0.9 MB
+    "kb-from-zero.zip": 100 * 1024,      # 源码包，从 0.17 MB（v1.3.x）到 1.0 MB（当前）
     "kb-hub.exe": 4 * 1024 * 1024,       # Windows 桌面，约 8.3 MB
     "kb-hub-linux": 8 * 1024 * 1024,     # Linux 桌面，约 17.9 MB
     "kb-hub-macos": 4 * 1024 * 1024,     # macOS 桌面，约 7.4 MB
