@@ -4,8 +4,8 @@ rem ============================================================
 rem  publish_to_github.bat  (UTF-8, chcp 65001 required)
 rem  One-shot publisher for the "knowledge-base-from-zero" repo.
 rem
-rem  Flow:  release-gate preflight -> privacy scan -> git init/commit
-rem         -> create public repo -> push -> verify assets -> create Release
+rem  Flow:  release-gate preflight -> privacy scan -> git commit/push branch
+rem         -> tag + push tag -> CI builds 5 assets and publishes the Release
 rem
 rem  🔴 TAG is read from root VERSION (the single source of truth).
 rem     It used to be hard-coded as v1.3.1 and stayed stale for 3 releases.
@@ -13,10 +13,16 @@ rem  🔴 This is the ONLY script that performs outbound actions.
 rem     Run it by hand = you are authorizing the publish; no automation calls it.
 rem     tools/release_gate.py itself NEVER pushes.
 rem
+rem  🔴 2026-11-20: 本脚本不再自己 `gh release create`。
+rem     旧版只上传 kb-from-zero.zip + kb-hub.exe 两件，CI 那条路一件都不传，
+rem     两条发版路径各缺各的 —— v1.21.0~v1.23.0 连续四版资产全空就是这么来的。
+rem     现在统一成一条：本地只 push，Release 由 .github/workflows/release.yml
+rem     构建 5 个资产（源码包/exe/linux/macos/apk）后发布，构建失败就不发。
+rem     发版完成的判据是 tools/release_assets_gate.py 返回 0，不是脚本不报错。
+rem
 rem  Prereqs:
 rem    1) run "gh auth login" once (needs YOUR GitHub account)
-rem    2) build assets in this folder: kb-from-zero.zip + kb-hub.exe
-rem    3) keep your private term list OUTSIDE the repo:
+rem    2) keep your private term list OUTSIDE the repo:
 rem       %USERPROFILE%\.kb_privacy_terms.txt
 rem ============================================================
 setlocal
@@ -57,8 +63,9 @@ if errorlevel 1 (
 
 cd /d "%ROOT%"
 
+rem 🔴 --skip-tag: 此刻本地 tag 还没打（第 4 步才打），不能让 gate 去比对旧 tag。
 echo [0.5/6] release gate (version consistency + privacy + payload size) ...
-%PY% tools\release_gate.py --check --preflight
+%PY% tools\release_gate.py --check --skip-tag --preflight
 if errorlevel 1 (
   echo [ERROR] release gate failed. Fix it before publishing.
   pause
@@ -100,18 +107,35 @@ if errorlevel 1 (
   git push -u origin --all
 )
 
-echo [4/6] verifying assets ...
-if not exist "kb-from-zero.zip" ( echo [ERROR] missing kb-from-zero.zip & pause & exit /b 1 )
-if not exist "kb-hub.exe" ( echo [ERROR] missing kb-hub.exe & pause & exit /b 1 )
+echo [4/6] tag + push tag (CI will build 5 assets and publish) ...
+rem 本地不构建产物：CI 从 tag 现场构建，资产名与 Release 逐字一致。
+git rev-parse -q --verify "refs/tags/%TAG%" >nul 2>&1
+if errorlevel 1 (
+  git tag -a %TAG% -m "release %TAG%"
+  echo   created tag %TAG%
+) else (
+  echo   tag %TAG% already exists
+)
+git push origin %TAG%
+if errorlevel 1 (
+  echo [ERROR] failed to push tag %TAG%.
+  pause
+  exit /b 1
+)
 
-echo [5/6] create GitHub Release %TAG% ...
-"%GH%" release create %TAG% ^
-  --title "%TAG% 知识库搭建体系（门户 + 示例）" ^
-  --notes-file RELEASE.md ^
-  "kb-from-zero.zip#源码压缩包" ^
-  "kb-hub.exe#门户可执行文件"
+echo [5/6] Release is built by CI, not here ...
+echo   workflow : .github/workflows/release.yml
+echo   watch    : "%GH%" run list --workflow release.yml --limit 3
+echo   note     : build takes ~30-60 min (android layer is the slow one)
+echo   a Release only counts as published when assets pass the gate below.
 
-echo [6/6] done.
+echo [6/6] verify assets (run again after the workflow finishes) ...
+%PY% tools\release_assets_gate.py --tag %TAG%
+if errorlevel 1 (
+  echo.
+  echo   [PENDING] assets not complete yet - wait for the workflow, then re-run:
+  echo             %PY% tools\release_assets_gate.py --tag %TAG%
+)
 for /f "delims=" %%u in ('"%GH%" api user -q .login 2^>nul') do set "GHUSER=%%u"
 if defined GHUSER (
   echo  Repo    : https://github.com/%GHUSER%/%REPO_NAME%

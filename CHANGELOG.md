@@ -161,6 +161,12 @@
   与 Release 上的资产名对齐。
 - **`tools/make_release_zip.py` 支持 `--ref <tag>`**：按 git 对象打包，工作区零改动，
   供补历史版本时保证「源码包内容对应各自 tag」。
+- **`publish_to_github.bat` 收敛为「只 push、不发版」**：旧脚本自己调 `gh release create`，
+  只传 `kb-from-zero.zip` + `kb-hub.exe` **两件**，与 CI 那条路（0 件）各缺各的——
+  「走 bat 的版本只有 2 件、走 tag 的版本 0 件」，两条路径从未对账。现在本地只负责打 tag、
+  push 分支与 tag，Release 与 5 个资产全部由 CI 产出；收尾跑 `release_assets_gate --tag` 自检。
+  同时修了顺序 bug：旧版先跑 `release_gate --check`、后打 tag，`--check` 会拿 VERSION 去比
+  **上一个** tag，必然 FAIL。现在该步用 `--check --skip-tag`。
 - **`release_gate.py --check` 通过后不再等于「发版完成」**：判据改为
   `release_assets_gate --tag <tag>` 返回 0。
 
