@@ -1,0 +1,160 @@
+# rag_params.yaml — 检索参数注册表（W8-A）
+#
+# 立卡：2026-11-07 ｜ 来源：窗口交接工程/14-就业导向RAG工程化补齐/W8-参数调优与精排工程化.md §二 A
+# 🔴 定位：这是「默认值登记表」，不是「调参开关」。
+#    · 改这里的 default **不会**改变生产行为（rag_config 有等价性守卫，漂移会报警并回落）；
+#    · 调参一律走环境变量覆盖 / param_sweep.py --grid；
+#    · 想改默认：先按 evidence_to_change 补齐证据 + 跑 eval_gate + 作者拍板，再改代码常量并同步本表。
+# 🔴 六列口径：name / default / range / source（实测来源：卡+节）/ killed（是否被 kill criterion 判平）
+#    / evidence_to_change（改默认需要什么证据）
+# 🔴 实测来源全部来自 W8 卡 §一 已核对原文的 7 条历史结论 + 00 号文件 §二，未读其它窗口的卡。
+
+version: "1.0"
+frozen_at: "2026-11-07"
+note: "默认值与 2026-11-07 改造前 kb_rag.py / kb_index.py / query_rewrite.py 硬编码逐位一致"
+
+params:
+  - name: rrf_k
+    default: 2
+    range: "整数 1..100"
+    source: "W8 §一 第1行 / v3 对标 §二：100 条 judged set 实测钉死，业界惯例 k=60 反而更差；kb_index.py:199 RRF_K_DEFAULT=2"
+    killed: false
+    evidence_to_change: "≥100 条 judged set 重扫 + 同集配对 McNemar p<0.05 且 R@5 净涨；并跑 eval_gate 确认不降"
+
+  - name: kw_weight
+    default: 2.0
+    range: "(0, 5.0] 浮点"
+    source: "W8 §一 第2行 / W1 §七 第5轮：_sandbox_weight_ab.py 154 条 judged set 扫出 2.0/1.5/0.5；kb_rag.py:90 W_KW=2.0"
+    killed: true
+    evidence_to_change: "W1 五组权重扫描最优组 +3.0pp 但 McNemar p=0.3323 判平 → 不改默认；需 p<0.05 且净涨才可提"
+
+  - name: vec_weight
+    default: 1.5
+    range: "(0, 5.0] 浮点"
+    source: "W8 §一 第2行 / W1 §七 第5轮：同上 154 条 judged set；kb_rag.py:91 W_VEC=1.5"
+    killed: true
+    evidence_to_change: "同 kw_weight，判平不改默认；需 p<0.05 且净涨"
+
+  - name: sub_weight
+    default: 0.5
+    range: "(0, 5.0] 浮点"
+    source: "W8 §一 第2行 / kb_rag.py:87-92：0.3 实测略优但只差 1 条（噪声量级），保留 0.5 以守住字级保底路"
+    killed: true
+    evidence_to_change: "同 kw_weight；且任何下调需补生僻字/单字查询不劣化的证据"
+
+  - name: rerank_on
+    default: true
+    range: "true | false"
+    source: "W8 §一 第3行 / W1 §七 第6轮：全量配对 off 47.0%→on 47.6%，净 +1，p=1.0000；kb_rag.py:552 形参默认 True"
+    killed: true
+    evidence_to_change: "🔴 W4 边界明写不改默认开启状态；分桶看是 B/D/F 净赚 11 被 C 硬负样本净亏 10 抵消；需分流精排 p<0.05 且 R@5 净涨"
+
+  - name: rerank_pool
+    default: 30
+    range: "整数 10..100"
+    source: "W8 §一 第6行 / W4 §7.1：KB_RERANK_POOL=10 使稳态 694ms→514ms(−26%) 但会改结果，只报数不动默认；kb_rag.py:744"
+    killed: true
+    evidence_to_change: "需延迟收益 + 同集配对 p<0.05 且 R@5 不降，两条同时成立"
+
+  - name: topk
+    default: 5
+    range: "整数 1..50"
+    source: "kb_rag.py:552 search_unified 形参默认；CLI --topk 默认 5；W3 主集口径 R@5"
+    killed: false
+    evidence_to_change: "换 topk 会换尺子，必须先升 eval_sets 新版本并重冻基线"
+
+  - name: rewrite_level
+    default: "off"
+    range: "off | l0 | l1 | l2"
+    source: "W8 §一 第5行 / W4 §7.1：off/l0/l1 三档全平，三组 p=1.0000 → 默认 off；query_rewrite.py:53 DEFAULT_LEVEL=off"
+    killed: true
+    evidence_to_change: "🔴 rewrite=off 是逐位一致的回滚开关；需同集配对 p<0.05 且净涨"
+
+  - name: chunk_size
+    default: 480
+    range: "整数 256..1024（字符）"
+    source: "00 号文件 §二 #4：480 字符标题感知切块，垃圾过滤 3.43%→1.67%；当前代码在 kb_index.py 切块层，本窗口不改"
+    killed: false
+    evidence_to_change: "改切块必须 build --full 重建四表 + eval_gate 不降 + 四表覆盖率 100%；属 W7/W9 范畴"
+
+  - name: chunk_overlap
+    default: 0
+    range: "0..0.2*chunk_size"
+    source: "00 号文件 §二 #4：overlap 0 / 无 parent-child / 无表格还原，判 ⚠️ 达标但缺两块；本窗口不改"
+    killed: false
+    evidence_to_change: "需切块层 A/B 实测 + 四表重建 + R@5 净涨且 p<0.05"
+
+  - name: category_relax
+    default: "off"
+    range: "off | all"
+    source: "00 号文件 §二 #7：--category 生效 + 降级分支，默认「0 条不放宽」待拍板；kb_rag.py:735 KB_FILTER_RELAX"
+    killed: false
+    evidence_to_change: "🔴 隐私门禁相关，放宽前必须过三层隐私门禁复核 + 作者书面许可"
+
+  - name: m3_route
+    default: false
+    range: "（不设）=false | latin=仅外文切 m3 | cjk=中文也切 m3 | all=全部切 m3"
+    source: "kb_rag.py _vec_route_m3（W7e 2026-11-09 合并）：不设 KB_VEC_ROUTE 一律 False，中文/外文行为逐位不变；cjk/all 档依据 w7d_fullcover_eval.json —— m3 recall@5 0.548913 vs small-zh 0.413043，GPU fp16 稳态 p50 30.26ms 已优于 small-zh 37.9ms，「精度换延迟」取舍不再成立"
+    killed: false
+    evidence_to_change: "外文或中文查询集 A/B 实测 + p<0.05；不设 env 时行为必须保持逐位不变"
+
+  - name: vec_m3_engine
+    default: "cpu"
+    range: "cpu（不设）| gpu_fp16（需 KB_VEC_M3_ENGINE=gpu_fp16 + CUDA 可用，不可用自动回落 cpu）"
+    source: "bge_encoder.py load_m3_model / encode_m3（W7e 2026-11-09 合并）：gpu_fp16 依据 w7d_fullcover_eval.json —— 编码 17.03ms vs CPU 312.9ms，cosine_vs_cpu 0.99999905（等同），默认不设 = CPU torch 与历史行为一致"
+    killed: false
+    evidence_to_change: "需 GPU 与 CPU 编码向量 cosine ≥0.9999 + 检索 top-k 逐位一致；无 CUDA 环境时必须验证自动回落 cpu 不报错"
+
+  - name: filter_pool
+    default: 20
+    range: "整数 10..100"
+    source: "kb_rag.py:744 pool_n = min(max(topk*3, 20), KB_RERANK_POOL or 30) 的融合池下界"
+    killed: false
+    evidence_to_change: "与 rerank_pool 联动，需同池配对检验；单改下界会改精排输入集"
+
+  - name: media_penalty
+    default: 0.5
+    range: "[0.0, 1.0] 浮点"
+    source: "kb_rag.py:47-65 _media_penalty 四档实测：pen=0.5 时 holdout R@5 98.3% / MRR 0.9006 三指标全优；0.35/0.0 与 0.5 完全相同"
+    killed: false
+    evidence_to_change: "需 holdout + raw 双集合同时净涨且配对 p<0.05"
+
+  - name: like_timeout
+    default: 2.0
+    range: "(0, 30.0] 秒"
+    source: "kb_rag.py:110 LIKE_TIMEOUT：1-2 字查询走全表 LIKE 的熔断秒数"
+    killed: false
+    evidence_to_change: "需长尾延迟分位 + 空检率不劣化证据"
+
+  - name: rewrite_fanout_w
+    default: 0.6
+    range: "(0, 1.0] 浮点"
+    source: "query_rewrite.py:23：首条子查询恒 1.0，其余 KB_REWRITE_FANOUT_W 默认 0.6"
+    killed: true
+    evidence_to_change: "改写整体已判平（W4 §7.1），需先解掉改写总账才能谈 fanout"
+
+# 环境变量映射（rag_config.resolve 用；调参只走这里，不改生产默认）
+env_map:
+  rrf_k: KB_RRF_K
+  kw_weight: KB_W_KW
+  vec_weight: KB_W_VEC
+  sub_weight: KB_W_SUBSTR
+  rerank_pool: KB_RERANK_POOL
+  rewrite_level: KB_REWRITE
+  m3_route: KB_VEC_ROUTE
+  category_relax: KB_FILTER_RELAX
+  media_penalty: KB_MEDIA_PENALTY
+  rewrite_fanout_w: KB_REWRITE_FANOUT_W
+
+# ===== W19 新增：在线编排开关（独立 namespace，不进上面的 params/env_map）=====
+# 为什么不进 params：rag_config._FALLBACK 是「2026-11-07 改造前硬编码基准」，
+#   verify_registry() 遍历它判漂移；orchestrator 是 W19 新增能力，无「改造前基准」，
+#   混进去会被误判成「改了生产默认」。故独立段 + orchestrator_gate.py 管。
+# 双控优先级：环境变量 KB_RETRIEVE_MODE > 本段 default（冲突时 env 胜，保证一行 env 回滚）。
+# 切默认须作者拍板签字（00 §一裁决3 / W19 卡 §四）：本段 default 恒 classic，
+#   改它 = 改生产默认，须 A/B 双门槛 p<0.05 且 ΔR@5≥+3pp + 独立 hold-out + 人验签字。
+orchestrator:
+  default: classic
+  env: KB_RETRIEVE_MODE
+  values: [classic, agentic]
+  evidence_to_change: "W21 eval_agentic_gate.py 同进程 hold-out 配对，McNemar 双侧 p<0.05 且 ΔR@5≥+3pp，独立 hold-out 未在 184 主集混用，作者人验签字"

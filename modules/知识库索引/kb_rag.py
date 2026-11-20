@@ -38,7 +38,9 @@ import bge_reranker    # noqa: E402
 import ingest_raw      # noqa: E402
 import build_task      # noqa: E402  T12：多会话构建队列
 import vec_tables      # noqa: E402  #37：四表一致性的唯一口径（缺失 id / 补 m3 / 断言）
-import query_rewrite   # noqa: E402  #39：查询改写三层（纯函数，零依赖）
+import query_rewrite   # noqa: E402  #39：查询改写三层（纯函数，零依赖；默认 off）
+import rag_config      # noqa: E402  #W8-A：参数注册表读取层（默认值逐位等价，见 rag_config.verify_registry）
+import egress_policy   # noqa: E402  #2026-11-13：默认出口敏感路径策略（扩展，不覆盖 is_privacy_path）
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA_PREFIX = "wiki/媒体/"
@@ -57,11 +59,12 @@ def _media_penalty():
       （实证：「抢救工作站 办理入院证 按钮」媒体页排第 2）。
       设 1.0 = 降级前行为（不降权），0.0 = 完全不参与融合。
     """
+    default_pen = rag_config.get("media_penalty")   # W8-A：注册表默认 0.5，逐位等价
     raw = os.environ.get("KB_MEDIA_PENALTY")
     try:
-        v = float(raw) if raw not in (None, "") else 0.5
+        v = float(raw) if raw not in (None, "") else default_pen
     except ValueError:
-        v = 0.5
+        v = default_pen
     return max(0.0, min(1.0, v))
 
 
@@ -87,9 +90,11 @@ def rrf_k() -> int:
 # 🔴 为什么 substr 取 0.5 而不是数据上略优的 0.3：substr 是字级 trigram 保底路，
 #   生僻字/单字查询（如「屮艸芔茻」）只有它能命中。0.3 与 0.5 的实测差只有 1 条
 #   （噪声量级），但 0.5 保留了更强的保底能力——不为 1 条差异去削保底路。
-W_KW = 2.0
-W_VEC = 1.5
-W_SUBSTR = 0.5
+# W8-A：三路默认权重改从 rag_params.yaml 读取（rag_config 等价性守卫保证逐位一致）。
+# 🔴 只换「值从哪来」，不换值本身；调参走 KB_W_* 环境变量覆盖，生产默认一个不动。
+W_KW = rag_config.get("kw_weight")
+W_VEC = rag_config.get("vec_weight")
+W_SUBSTR = rag_config.get("sub_weight")
 
 
 def _w(env, default=1.0):
@@ -106,8 +111,53 @@ def _w(env, default=1.0):
         return default
 
 
+def recall_mult() -> int:
+    """三路召回深度倍率：默认 2（= 历史硬编码 `topk*2`，逐位等价）。
+
+    🔴 W27 加口子的原因（2026-11-19，可取证）：精排实验把 `KB_RERANK_POOL`
+       设 20/50/100 三档，逐题结果**完全相同**（17 救 13 坏、p=0.5847、明细同序）。
+       根因不是「精排无效」，而是池被两道闸卡死：
+         pool_n = min(max(topk*3, filter_pool=20), rerank_pool=30)  →  topk=5 时恒为 20
+       而 `filter_pool` 在 rag_config._ENV_MAP 里**没有环境变量映射**，外部拉不动
+       ⇒ 池扩容实验事实上没做。同批还发现三路召回深度只有 `topk*2=10`，
+       168 题里 48 题（28.6%）gt 连 top100 都进不去，说明瓶颈在**召回**不在排序。
+    🔴 默认值 2 与改前逐位一致；`KB_RECALL_MULT` 只用于实验，不进生产默认。
+    """
+    try:
+        m = int(os.environ.get("KB_RECALL_MULT", "") or 2)
+        return m if m >= 1 else 2
+    except (TypeError, ValueError):
+        return 2
+
+
+def pool_cap(topk: int) -> int:
+    """精排候选池上限：默认 min(max(topk*3, filter_pool=20), rerank_pool=30)，逐位等价。
+
+    🔴 两个环境变量口子都是**默认不设时完全等价**：
+       KB_FILTER_POOL   覆盖 rag_config.filter_pool（原来没有 env 映射，池被硬卡 20）
+       KB_RERANK_POOL   覆盖 rag_config.rerank_pool（W8-A 已有）
+    """
+    def _int_env(env, default):
+        raw = os.environ.get(env, "")
+        if raw not in (None, ""):
+            try:
+                v = int(raw)
+                if v > 0:
+                    return v
+            except (TypeError, ValueError):
+                pass
+        try:
+            return int(default)
+        except (TypeError, ValueError):
+            return 0
+
+    lo = max(topk * 3, _int_env("KB_FILTER_POOL", rag_config.get("filter_pool")))
+    hi = _int_env("KB_RERANK_POOL", rag_config.get("rerank_pool"))
+    return min(lo, hi) if hi > 0 else lo
+
+
 RRF_K = rrf_k()                 # 模块级兼容值（老引用方行为不变）
-LIKE_TIMEOUT = 2.0              # 1-2 字查询走全表 LIKE 的熔断秒数
+LIKE_TIMEOUT = rag_config.get("like_timeout")   # W8-A：注册表默认 2.0，逐位等价
 PRIVACY_NOTE = ingest_raw.PRIVACY_NOTE
 
 
@@ -125,7 +175,8 @@ def say(msg):   # 进度一律走 stderr：stdout 只留给 --json 结果，门�
 # 边界：① 仅当本机存在 GPU venv 时触发，不存在则维持原行为（个人档不判红）；
 #   ② `--skip-vec` / `--limit` 分批构建不触发（那是操作者显式选择）；
 #   ③ 补失败只告警、不影响 build 的 rc（补向量不该把文本构建搞红）。
-GPU_VENV_PY = os.environ.get("KB_GPU_PY") or r"E:\_venvs\gpu\Scripts\python.exe"
+# 开源版：不写死本机路径。留空 = 无 GPU venv → auto_backfill_m3 自动跳过（保持原行为）。
+GPU_VENV_PY = os.environ.get("KB_GPU_PY") or ""
 
 
 def _m3_missing_now():
@@ -403,8 +454,38 @@ def _doc_meta_map(conn, doc_ids):
     return out
 
 
-def _enrich(conn, items, query):
-    """给命中补 category / snippet / matched——前端与 ask 都吃这套字段。"""
+def _doc_category_map(conn, doc_ids):
+    """批量取 doc 级 category，供 W4 `--category` 过滤用（一次查询，分批防爆）。
+
+    为什么单独一个函数、不改 `_doc_meta_map` 的返回值：
+      · (path, mtime) 是 T3 既有契约，改返回值要动所有调用方并可能漏改；
+      · category 只在**显式传 --category** 时才查 —— 默认路径零额外 SQL、
+        零行为变化，这是「改主链路但不改默认行为」的安全底线。
+    """
+    out = {}
+    ids = list(doc_ids)
+    for i in range(0, len(ids), 400):     # SQLite 变量数上限 999，分批防爆
+        part = ids[i:i + 400]
+        ph = ",".join("?" * len(part))
+        try:
+            rows = conn.execute(
+                "SELECT id, category FROM docs WHERE id IN (%s)" % ph, part).fetchall()
+        except sqlite3.OperationalError:
+            rows = []                      # 老库无 category 列 → 全空，过滤安全返空
+        for did, cat in rows:
+            out[did] = cat or ""
+    return out
+
+
+def _enrich(conn, items, query, scope=None):
+    """给命中补 category / snippet / matched——前端与 ask 都吃这套字段。
+
+    scope（2026-11-12 作者裁定）：默认 ``egress``，**逐位保持改造前行为**——
+    隐私路径正文换占位符，--json / 门户 / MCP / 任何脚本都拿不到隐私正文。
+    ``scope=local`` 是显式本机自用通道：本地单人库访问者即库主本人，按业界
+    identity-aware retrieval，owner 查询放行正文；出口侧一律不走这个分支。
+    """
+    scope = scope or os.environ.get("KB_SCOPE", "egress")
     toks = [t for t in kb_index.tokenize(query) if len(t.strip()) > 1][:6]
     for it in items:
         r = conn.execute("SELECT category, summary FROM docs WHERE id=?", (it["doc_id"],)).fetchone()
@@ -437,17 +518,34 @@ def _enrich(conn, items, query):
         it.pop("chunk_text", None)
         it.pop("summary", None)
         # ---- 出口门禁（2026-11-04，随 .xls 开摄一起上；作者批 A 方案的第二道门）----
-        # 🔴 为什么必须下沉到 _enrich（而不是只在 cmd_ask 输出层挡）：
-        #   `search` / `--json` / 门户 / 任何直接调 `search_unified` 的调用方
-        #   拿到的都是同一批 items，只有 cmd_ask 挡 = 其他出口裸奔。
-        #   门禁要在**出口统一**做，不能指望每个调用方自己记得挡。
-        # 🔴 为什么不是「不返回这条结果」：返回路径仍有用（知道库里有、可本地打开），
-        #   断掉的是**正文与命中词**——那才是会被拼进模型上下文、被复制外传的部分。
-        if is_privacy_path(it.get("path")):
-            it["snippet"] = PRIVACY_EXPORT_MARK
-            it["matched"] = []
-            it["coverage"] = None
-            it["redacted"] = True
+        # 为什么下沉到 _enrich：以前只有 cmd_ask 在输出层挡（line ~793 的
+        # PRIVACY_EXPORT_MARK），而 search / --json / 门户 / 任何直接调
+        # search_unified 的调用方都拿得到 raw/隐私/ 的正文。门禁必须在**出口统一**做，
+        # 不能指望每个调用方自己记得挡。
+        # 为什么不是「不返回这条结果」：返回路径仍有用（知道库里有、可本地打开），
+        # 断掉的是正文与命中词——那才是会被拼进模型上下文的部分。
+        # 🔴 2026-11-13 扩展（不覆盖）：`wiki/个人信息/` 等敏感路径在默认出口也脱敏。
+        # 依据 gitleaks `[extend] useDefault` 思路——追加默认规则、不另起炉灶：
+        # 既有 is_privacy_path()（kb_index.PRIVACY_PATH_PREFIXES 三用真相源：元数据不 stat /
+        # 摄取 XLS 拒绝 / 出口脱敏）一条不动，改它就会连带波及元数据层与摄取层。
+        # egress_policy 只管默认出口；scope=local 的本地自用分支下面完全不变。
+        _priv_path = is_privacy_path(it.get("path"))
+        _egress_hit = (not _priv_path and
+                       egress_policy.is_egress_sensitive(it.get("path")))
+        if _priv_path or _egress_hit:
+            # 可审计：这条结果是被哪一层拦的（门户 / MCP / 脚本可从 --json 读到）
+            it["redacted_by"] = "privacy_path" if _priv_path else "egress_policy"
+            if scope == "local":
+                # 本机自用（2026-11-12 裁定「隐私只是对外、对云」）：放行本人隐私正文。
+                # 🔴 只由显式 --scope local 触发；默认 egress 分支下面一行都不变。
+                it["redacted"] = False
+                it["scope"] = "local"
+                it["local_only"] = True
+            else:
+                it["snippet"] = PRIVACY_EXPORT_MARK
+                it["matched"] = []
+                it["coverage"] = None
+                it["redacted"] = True
     return items
 
 
@@ -515,24 +613,75 @@ def _is_cjk_query(q):
 
 
 def _vec_route_m3(q):
-    """外文查询是否切到 bge-m3 多语塔。
+    """vec 路由：什么查询切到 bge-m3 多语塔（W7e 2026-11-09 合并，作者拍板）。
 
-    🔴 默认关闭（红线）：不设 KB_VEC_ROUTE 时一律 False ⇒ 走现状 small-zh，
-    中文/外文行为逐位不变。只有 KB_VEC_ROUTE 为真值 **且** 查询判为外文（非 CJK）
-    时才切 m3；中文查询即使开关开着也仍走 small-zh。
+    🔴 默认关闭（红线不变）：不设 KB_VEC_ROUTE 时一律 False ⇒ 走现状 small-zh，
+    中文/外文行为逐位不变。开启后按 KB_VEC_ROUTE 取值分档：
+      - "cjk" / "all"：中文查询也切 m3 塔（W7d 交接条目 enable_for_cjk 档；
+        依据 w7d_fullcover_eval.json：m3 recall@5 0.548913 vs small-zh 0.413043，
+        GPU fp16 稳态 p50 30.26ms 已快于 small-zh 37.9ms，「精度换延迟」取舍不再成立）；
+      - 其它真值（如 "1" / "latin"）：维持 W1 原设计——仅外文（非 CJK）查询切 m3。
+    vec_m3_engine 后端（KB_VEC_M3_ENGINE）见 bge_encoder.encode_m3 的 GPU 分支；
+    默认不设 = CPU torch，与历史行为一致。
     """
-    if not os.environ.get("KB_VEC_ROUTE"):
+    mode = os.environ.get("KB_VEC_ROUTE", "")
+    if not mode:
         return False
+    if str(mode).strip().lower() in ("cjk", "all"):
+        return True
     return not _is_cjk_query(q)
 
 
+def _orchestrator_trace(query, orchestrator):
+    """W19 编排钩子：返回 (resolved, trace_note, degraded)。
+
+    🔴 纯增量：classic 不 import W20 内核、不改召回、note 为空 → 逐位等价。
+    agentic 只记编排 trace（W20 stages），召回由主函数照原样走；异常即降级。
+    延迟 import（不进模块顶层）= classic 路径零加载、在线链路零 llm_kit 引用。
+    """
+    try:
+        import orchestrator_gate as gate
+    except Exception as e:  # noqa: BLE001 - gate 读坏不能让检索挂
+        return "classic", "", "gate 不可用已回落 classic: %s" % str(e)[:60]
+    resolved = gate.resolve()["value"] if orchestrator is None else str(orchestrator).strip().lower()
+    if resolved not in ("classic", "agentic"):
+        return "classic", "", "orchestrator=%r 非法已回落 classic" % resolved
+    if resolved == "classic":
+        return "classic", "", ""          # 零 trace、零 import
+    # ---- agentic：经适配器调 W20 内核跑编排（不改召回，只记 trace）----
+    try:
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _agentic = os.path.abspath(os.path.join(_here, "..", "AgenticRAG"))
+        if _agentic not in sys.path:
+            sys.path.insert(0, _agentic)
+        import w20_adapter_agentic as w20
+        trace = w20.stages()
+        names = ">".join(name for name, _fn in trace)
+        return "agentic", "orchestrator=agentic;W20编排:%s;召回classic(不改)" % names, ""
+    except Exception as e:  # noqa: BLE001 - agentic 任一步异常必 fallback classic
+        return "classic", "", "agentic 编排异常已fallback classic: %s: %s" % (
+            type(e).__name__, str(e)[:80])
+
+
 def search_unified(conn, query, topk=5, mode="fused", rerank=True,
-                   since=None, path_prefix=None, rewrite=None):
+                   since=None, path_prefix=None, rewrite=None, category=None,
+                   scope=None, orchestrator=None):
     """三链路 RRF 融合。mode: fused(全开) / kw / vec / substr。
+
+    🔴 W19 在线编排开关（2026-11-18，00 §一裁决3）：orchestrator 仅在**末尾新增**，
+       mode 五处取值与语义原样不动（重载 mode 会静默坏三链路）。
+       orchestrator=None → 读 orchestrator_gate 双控（默认 classic）；
+       classic = 原 fused 三链路逐位等价、零额外加载；
+       agentic = 经适配器调 W20 编排内核记 trace，**召回仍走原三链路逐位不变**
+       （W20/W21 口径：agentic 态不改召回；W21 retriever.py 同款）。
+       任一步异常 → 自动 fallback classic + 降级日志，绝不改变召回结果。
+       接入 ≠ 切默认：默认恒 classic，切默认须 A/B 双门槛 + hold-out + 人验签字。
     rerank: RRF 融合后过 Cross-Encoder 精排（仅 fused 模式生效，默认开）。
     since: 'YYYY-MM-DD' 或 epoch 秒——只返 mtime >= 该日期的文档（T3 元数据过滤）。
     path_prefix: 只返 path 以该前缀开头的文档（如 'wiki/技术'）。
-    两个过滤都在**融合后、rerank 前**执行（理由见下方注释）。
+    category: 只返 docs.category == 该值的文档（W4；真实取值 wiki/raw/modules/
+              skills/projects/root/交接/...，可用 SQL `GROUP BY category` 现查）。
+    三个过滤都在**融合后、rerank 前**执行（理由见下方注释；🔴 不要挪到 RRF 融合之前）。
     rewrite: 改写档位 off|l0|l1|l2（#39）。None = 读 `KB_REWRITE`（默认 off，见 query_rewrite.DEFAULT_LEVEL）；
              **`rewrite="off"` 时行为与改造前逐位一致**（回滚开关，零代码）。
 
@@ -563,6 +712,12 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             since_txt = datetime.datetime.fromtimestamp(since_ts).strftime("%Y-%m-%d")
     rrf, meta, sources = {}, {}, {}
     notes = list(plan.notes)
+    # 🔴 W19 编排钩子（纯增量）：classic 返回空 trace/note → 下方 not append → 逐位等价
+    _resolved, _orch_trace, _orch_degrade = _orchestrator_trace(q, orchestrator)
+    if _orch_trace:
+        notes.append(_orch_trace)
+    if _orch_degrade:
+        notes.append("⚠️ " + _orch_degrade)
     if plan.level == 0:
         # off 档：note 文本保持改造前的原样（便于 off/on 两份输出逐位对比）
         if q_alias != q:
@@ -573,6 +728,8 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             notes.append("D5 别名扩展: %s" % q_alias)
 
     k = rrf_k()   # 运行时解析（KB_RRF_K 可配，默认 2），避免导入时绑定吃不到环境变量
+    # W27：各路召回深度（默认 topk*2，逐位等价；KB_RECALL_MULT 仅供实验放大）
+    depth = topk * recall_mult()
 
     # 🔴 媒体合成页降权（2026-10-29）：图片 OCR / 音视频转写产出的是**机器识别文本**，
     # 字面碎、断行多、重复度高，当成普通文档参与 RRF 会把真文档挤出前几名。
@@ -602,7 +759,7 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
     for sub, w_sub in subs:
         if mode in ("fused", "kw"):
             try:
-                add(kb_index.search_fts_fused(conn, sub, topk * 2), "kw",
+                add(kb_index.search_fts_fused(conn, sub, depth), "kw",
                     _w("KB_W_KW", W_KW) * w_sub)
             except Exception as e:
                 notes.append("kw 路失败: %s" % str(e)[:60])
@@ -611,10 +768,10 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
                 # T1 语言路由（默认关闭）：KB_VEC_ROUTE 开启且查询为外文时切 bge-m3 多语塔；
                 # 否则走现状 small-zh。开关关闭时本分支与历史行为逐位相同。
                 if use_m3_route:
-                    add(bge_encoder.search_bge_m3(conn, sub, topk * 2), "vec",
+                    add(bge_encoder.search_bge_m3(conn, sub, depth), "vec",
                         _w("KB_W_VEC", W_VEC) * w_sub)
                 else:
-                    add(bge_encoder.search_bge(conn, sub, topk * 2), "vec",
+                    add(bge_encoder.search_bge(conn, sub, depth), "vec",
                         _w("KB_W_VEC", W_VEC) * w_sub)
                 if not route_noted[0]:      # 只记一次（3 条子查询不该刷 3 行）
                     notes.append("vec 路由: m3" if use_m3_route else "vec 路由: small-zh")
@@ -622,7 +779,7 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             except Exception as e:
                 notes.append("vec 路失败: %s" % str(e)[:60])
         if mode in ("fused", "substr"):
-            items, note = search_substr(conn, sub, topk * 2)
+            items, note = search_substr(conn, sub, depth)
             if note and note not in notes:
                 notes.append(note)
             add(items, "substr", _w("KB_W_SUBSTR", W_SUBSTR) * w_sub)
@@ -631,7 +788,7 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
         if os.environ.get("KB_KG") == "1":
             try:
                 import kg_gate
-                add(kg_gate.expand_1hop(conn, sub, topk * 2, set(rrf.keys())),
+                add(kg_gate.expand_1hop(conn, sub, depth, set(rrf.keys())),
                     "kg", _w("KB_W_KG", 0.5))
             except Exception as e:
                 notes.append("kg 路失败: %s" % str(e)[:60])
@@ -641,16 +798,48 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
     # 只会引入噪声。失败绝不阻断——检索照常返回 L1 的结果。
     if plan.hyde and mode in ("fused", "vec"):
         try:
-            add(bge_encoder.search_bge(conn, plan.hyde, topk * 2), "vec_hyde",
+            add(bge_encoder.search_bge(conn, plan.hyde, depth), "vec_hyde",
                 _w("KB_W_HYDE", 0.8))
         except Exception as e:
             notes.append("HyDE 召回失败，已忽略: %s" % str(e)[:60])
 
+    # ---- W34 问句库通道（doc2query 文档侧增强，2026-11-20 接入生产）----
+    # 位置理由：放在 HyDE 之后、元数据过滤之前——此时各路召回都跑完、融合池完整，
+    #   且本路新增的文档同样会经过下面的 since/path_prefix/category 过滤，语义一致；
+    #   若放在过滤之后，会绕过 --since/--category 契约（等于给出不该出现的旧文档）。
+    # 开关：KB_QCH=off 一键关停（关时零加载零开销，与未接入前逐位一致）。
+    # 只作用于 fused：kw/vec/substr 单模式语义是「只走那一路」，不该被悄悄掺入。
+    # 静默约定：默认不加 note（避免改变既有输出文本影响回归断言），要排障设 KB_QCH_NOTE=1。
+    if mode == "fused":
+        try:
+            import qch_channel
+            if qch_channel.enabled():
+                qpaths = qch_channel.search(q, topn_n=qch_channel.topn())
+                if qpaths:
+                    ph = ",".join("?" * len(qpaths))
+                    id_of = {p: i for i, p in conn.execute(
+                        "SELECT id, path FROM docs WHERE path IN (%s)" % ph, qpaths).fetchall()}
+                    qitems = [{"doc_id": id_of[p], "path": p, "chunk_id": None}
+                              for p in qpaths if p in id_of]
+                    if qitems:
+                        add(qitems, "qch", qch_channel.weight())
+                        if os.environ.get("KB_QCH_NOTE") == "1":
+                            notes.append("问句库通道: 召回 %d 篇，入池 %d 篇"
+                                         % (len(qpaths), len(qitems)))
+        except Exception as e:
+            # 绝不阻断主链路：问句库挂了，三链路照常返回。
+            if os.environ.get("KB_QCH_NOTE") == "1":
+                notes.append("qch 路失败: %s" % str(e)[:60])
+
     # ---- 元数据过滤（T3）：融合之后、rerank 之前 ----
     # 为什么加在这个位置（三个候选位逐一推演）：
-    #   ① 各路召回内部过滤（kw/vec/substr 各加 WHERE）：同一逻辑三处实现，
+    #   ① 各路召回内部过滤（kw/vec/substr 各加 WHERE =「RRF 融合之前」）：同一逻辑三处实现，
     #      且各路召回深度只有 topk*2，过滤后可能凑不够 rerank 的 pool_n；
     #      BGE 向量路在 numpy 侧打分，SQL 过滤根本掺不进去——不可行。
+    #      🔴 W4 卡 §三 B 写「裁剪必须在三链路召回之后、RRF 融合之前，否则会破坏 RRF 的 rank
+    #      语义」，与这里的实现相反，但**卡的措辞把因果说反了**：恰恰是「融合前/召回内过滤」
+    #      会让每路 rank 序号被重编号、RRF 分不再跨路可比，才会破坏 rank 语义；在**完整融合池**
+    #      上一刀切（融合后）反而是唯一保住 RRF 语义的位置。W4 实测对账见卡 §七，不改位置。
     #   ② 融合后、rerank 前（本次选择）：RRF 分此时已跨路可比，在**完整融合池**
     #      上一刀切，单点实现；rerank 仍然只在过滤后的集合上跑（业主要求），
     #      精排分不会被「与查询相关但被过滤」的文档稀释；融合池按 RRF 序截
@@ -659,29 +848,60 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
     #      （0.23s/对），且「全池精排分低于阈值判零命中」会被受限文档的低分
     #      污染——库里明明有很多合格命中，却可能误报「未检索到」。
     # 代价：融合池照常全量计算（过滤不省召回成本）——换取正确性与单点实现，值得。
-    if since_ts is not None or path_prefix:
+    if since_ts is not None or path_prefix or category:
         dmeta = _doc_meta_map(conn, list(rrf.keys()))
+        # W4：category 只在显式传入时才回表查（默认路径零额外 SQL）
+        dcats = _doc_category_map(conn, list(rrf.keys())) if category else {}
         kept = {}
         for did, sc in rrf.items():
             p, mt = dmeta.get(did, (None, None))
             if path_prefix and not (p or "").startswith(path_prefix):
+                continue
+            if category and (dcats.get(did) or "") != category:
                 continue
             # mtime 未知（NULL，如未跑 backfill-meta 的新文档）不满足 --since：
             # 「无法证明够新」与「不够新」在过滤语义下同权，宁缺毋滥
             if since_ts is not None and not (isinstance(mt, int) and mt >= since_ts):
                 continue
             kept[did] = sc
-        notes.append("元数据过滤：%s%s融合池 %d→%d（rerank 在过滤后集合上运行）" % (
+        cond_txt = ("%s%s%s" % (
             "--path-prefix=%s " % path_prefix if path_prefix else "",
             "--since=%s " % since_txt if since_ts is not None else "",
-            len(rrf), len(kept)))
-        rrf = kept
+            "--category=%s " % category if category else ""))
+        notes.append("元数据过滤：%s融合池 %d→%d（rerank 在过滤后集合上运行）" % (
+            cond_txt, len(rrf), len(kept)))
+        # ---- W4 结果不足降级（卡 §三 B）----------------------------------
+        # 🔴 2026-11-06 回归修正：第一版把「过滤后 0 条」自动放宽成未过滤结果，
+        #    直接打脸既有 T3 回归 `_test_meta_filter.py`「空前缀语义：无匹配文档返空结果」。
+        #    两条理由让默认取**保守分支**（不自动放宽）：
+        #      ① 既有契约钉死「条件无匹配 → 返空」，破它等于让老测试说谎；
+        #      ② 用户明确说「只看 wiki」却拿到 raw = 静默违背意图，比返空更糟。
+        #    ⇒ 默认：0 条返空 + 明确提示；1..k-1 条保留合规结果 + 提示条数。
+        #      想按卡字面「不过滤 + 提示」→ KB_FILTER_RELAX=all（0 条与不足都放宽），
+        #      可复现、可验收。**是否把默认改成自动放宽，交作者拍板**，见 W4 卡 §七。
+        # 所有分支都**不会报错**（原实现本就不会），note 一律写清。
+        relax_all = str(os.environ.get("KB_FILTER_RELAX") or "").strip().lower() == "all"
+        short = len(kept) < topk
+        if relax_all and short:
+            notes.append("⚠️ 过滤后%s，KB_FILTER_RELAX=all 已放宽过滤返回原融合池结果"
+                         "（未过滤，请核对是否符合预期）"
+                         % ("0 条" if len(kept) == 0
+                            else "仅 %d 条（< topk=%d）" % (len(kept), topk)))
+            # rrf 保持原样 = 不过滤
+        else:
+            rrf = kept
+            if len(kept) == 0:
+                notes.append("⚠️ 过滤后 0 条（条件可能过严），按原语义返回空结果；"
+                             "如需放宽过滤请设 KB_FILTER_RELAX=all")
+            elif short:
+                notes.append("过滤后仅 %d 条（< topk=%d），未放宽过滤以免返回不合规文档；"
+                             "需放宽请设 KB_FILTER_RELAX=all" % (len(kept), topk))
     # ---- Cross-Encoder 精排（2026 RAG 金标准：Hybrid → RRF → rerank → top-k）----
     # 为什么加：RRF 只按名次融合，看不出「关键词都对但答非所问」的擦边文档；
     # bge-reranker-v2-m3 联合编码 query+文档出相关性分，只对融合池 top-N 打分，
     # 0.23s/对延迟可控，且本地推理不出网。必须在 _enrich 之前做——
     # _enrich 会 pop 掉 chunk_text/summary，精排的文本取值链就没了。
-    pool_n = min(max(topk * 3, 20), int(os.environ.get("KB_RERANK_POOL") or "30"))
+    pool_n = pool_cap(topk)
     ranked = sorted(rrf.items(), key=lambda x: -x[1])[:pool_n]
     rerank_on = rerank and mode == "fused"
     rerank_scores = {}          # doc_id → 精排分（精排生效的才在，_enrich 前先攒着）
@@ -759,7 +979,7 @@ def search_unified(conn, query, topk=5, mode="fused", rerank=True,
             it["rerank_score"] = round(rerank_scores[doc_id], 4)
             it["reranked"] = True
         out.append(it)
-    _enrich(conn, out, q)
+    _enrich(conn, out, q, scope)
     # L1 修复（QA 验收 2026-10-22 提出）：kw 路 OR 语义 + vec 路无阈值会让库里不存在的
     # 查询返回擦边文档而非「没有」。只警示不过滤——同义改写命中（如「搭建」vs「建设」）
     # 的 matched 也可能为空，过滤会误杀「一个字都要搜得到」的灵敏度。
@@ -791,7 +1011,7 @@ REFUSE_MAX_COVERAGE = 0.0
 # 只在「把内容交给模型 / 拼成可外传文本」的出口，把隐私正文换成占位符，
 # 保留路径与标题让用户知道它存在。
 # 🔴 只认 raw/隐私/ 与 raw/个人信息/ 两个前缀——**不套用 cloud_publishable 全量白名单**：
-# 后者会把 raw/项目/（示例市原始数据）、raw/微信文件/、raw/生活/ 等非隐私品类
+# 后者会把 raw/项目/（项目原始数据）、raw/微信文件/、raw/生活/ 等非隐私品类
 # 也判为"不可发布"，那会误伤本机正常检索。
 PRIVACY_EXPORT_MARK = "🔒【隐私内容·本机可检索，禁止外传/引用原文】"
 
@@ -828,11 +1048,16 @@ def is_no_confident_hit(results, note=None):
 
 
 # ---------- RAG 上下文包 ----------
-def build_context(query, results):
+def build_context(query, results, scope=None):
     """组装带编号引用的上下文包。无自信命中必须明说——库里没有的明确说没有，不编造。
 
     T1 拒答分支：检索到结果但无一为自信命中（coverage 全 0，纯语义擦边）时，
-    直接输出拒答串而非把擦边结果拼成上下文包喂给模型（那会诱导模型编造）。"""
+    直接输出拒答串而非把擦边结果拼成上下文包喂给模型（那会诱导模型编造）。
+
+    scope=local（2026-11-12 裁定）：本机自用时放行隐私正文并打 LOCAL-ONLY 水印；
+    默认 egress 的每一条分支与改造前逐位一致。
+    """
+    scope = scope or os.environ.get("KB_SCOPE", "egress")
     if not results:
         return (REFUSAL_NO_HIT + "（query 已记入 query_log）。"
                 "可换泛词重试，或确认该内容是否已在 raw/ + wiki/ 内。"), []
@@ -841,19 +1066,28 @@ def build_context(query, results):
                 "库内可能没有相关结论，不敢编造。）可换泛词重试，"
                 "或确认该内容是否已在 raw/ + wiki/ 内。"), []
     lines = ["## 上下文包（问题：%s）" % query, ""]
+    if scope == "local":
+        lines += ["🔒 LOCAL-ONLY：本机自用上下文，含本人资料正文；",
+                  "禁止外传 / 禁止入 git / 禁止写入对外发布物 / 禁止喂给云端模型。", ""]
     cites = []
     n_privacy = 0
+    n_local = 0
     for i, it in enumerate(results, 1):
         path = it["path"]
-        priv = is_privacy_path(path)
+        # 2026-11-13：上下文包与 _enrich 用同一套「既有隐私路径 OR 出口敏感路径」判据，
+        # 防止 search --json 已脱敏、ask 上下文包却漏出正文（出口必须唯一且一致）。
+        priv = is_privacy_path(path) or egress_policy.is_egress_sensitive(path)
         lines.append("[%d] 《%s》" % (i, it.get("title") or path))
         lines.append("路径：%s" % path)
-        if priv:
+        if priv and scope != "local":
             # 出口门禁：隐私正文不进上下文包，只留占位（路径仍给，便于本机追溯）
             lines.append("摘录：%s" % PRIVACY_EXPORT_MARK)
             n_privacy += 1
         else:
             lines.append("摘录：%s" % (it.get("snippet") or "")[:400])
+            if priv:
+                lines.append("⚠️ 本机自用（LOCAL-ONLY）：本条含隐私正文，仅可本地使用")
+                n_local += 1
         lines.append("")
         cites.append({"n": i, "path": path,
                       "title": it.get("title") or "", "privacy": priv})
@@ -866,6 +1100,9 @@ def build_context(query, results):
         lines.append("⚠️ 本次 %d 条命中来自隐私目录，原文已替换为占位符"
                      "（本机可检索、禁止外传：不得引用原文、不得写入对外发布物）。"
                      % n_privacy)
+    if n_local:
+        lines.append("⚠️ 本次 %d 条命中含隐私正文（scope=local 本机自用）；"
+                     "带 LOCAL-ONLY 水印的文本不得离开本机。" % n_local)
     lines.append("（以上为检索结果原文摘录；作答时每句标注引用编号，库内没有的内容不要补充。）")
     return "\n".join(lines), cites
 
@@ -873,17 +1110,10 @@ def build_context(query, results):
 # ---------- build ----------
 def backfill_bge(conn, limit=0, batch=32):
     """给没有向量的 chunk 补 BGE。增量：NOT IN 差量；每批 commit，可随时中断续跑。"""
-    # 🔴 2026-11-03（T02）删掉一行**死代码** `import numpy as np`：本函数体内
-    # 从未用到 np（真正需要 numpy 的是 bge_encoder.encode()，它自己会 import）。
-    # 保留它的后果是：一台没装 numpy 的机器上，**哪怕一块都不用编码**（增量 build
-    # 常态），build 也会在补写阶段直接 ModuleNotFoundError 崩掉 —— 这与
-    # 「无 GPU/无重依赖的机器上增量 build 只跳过、不失败」的承诺直接矛盾。
+    import numpy as np
     # 本库实测：并发会话跑 kb_index.py build 时 5s 默认超时必挂（database is locked），
     # WAL 单写者模型下全量 build 的写事务窗口以分钟计，30s 起步
     conn.execute("PRAGMA busy_timeout=30000")
-    # 🔴 首次构建时 chunk_bge/vec_m3 可能还不存在，先确保建表（幂等），
-    # 否则下面的孤儿清理查询会 no such table 直接崩（开放版首次 build 必现）。
-    bge_encoder.ensure_tables(conn)
     # 清残：旧版 build 冲库后 chunk_bge 会留下指向不存在 chunk 的孤儿行，
     # 不清理则 stats/doctor 覆盖率 >100% 失真（实测 20154 孤儿 vs 4007 chunk = 503%）
     n_orphan = conn.execute(
@@ -901,6 +1131,7 @@ def backfill_bge(conn, limit=0, batch=32):
         rows = rows[:limit]
     if not rows:
         return 0
+    bge_encoder.ensure_tables(conn)
     done, t0 = 0, time.time()
     for i in range(0, len(rows), batch):
         part = rows[i:i + batch]
@@ -925,6 +1156,13 @@ def backfill_bge(conn, limit=0, batch=32):
          bge_encoder.vector_fingerprint()))
     conn.commit()
     return done
+
+
+#: m3 模型目录（开源版：默认放仓库内 models/bge-m3，可用 KB_M3_MODEL_DIR 覆盖）。
+#: 🔴 必须与 bge_encoder.M3_MODEL_DIR、vector_backfill.M3_DIR 指向**同一处真实位置**——
+#: 三处不一致会导致 status=no-model 静默跳过，等于「补了等于没补」且不报错。
+M3_MODEL_DIR = (os.environ.get("KB_M3_MODEL_DIR")
+                or os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "bge-m3"))
 
 
 def _m3_skip_tail(mode, limit):
@@ -972,6 +1210,19 @@ def backfill_m3(conn, limit=0, batch=32):
         lag_after, reason?, dim?}`。status 永远返回而**从不抛异常**（构建不许因为没 GPU 挂）。
     """
     mode = (os.environ.get("KB_BACKFILL_M3") or "auto").strip().lower()
+    # 🔴 清残（2026-11-04，C6 根因修复）：与 `backfill_bge` 里那段完全同口径。
+    #    为什么会有孤儿：`kb_index.py` 删 chunk 的三处（drop_doc / 重建）只删
+    #    `chunks` 和 `chunks_fts`，**不级联** `chunk_bge` / `vec_m3`；bge 侧早在
+    #    `backfill_bge` 开头自清，m3 侧一直没人清 —— 于是每次 rechunk 都留一片，
+    #    实测 2026-11-04：4146 行 / 16.2 MB，且随每次 build 增长（870→1883→2679→3407→4146）。
+    #    只删「指向已不存在 chunk」的行，不碰任何有效向量；**不需要 GPU**，无 CUDA 也清。
+    n_orphan = conn.execute(
+        "SELECT COUNT(*) FROM vec_m3 WHERE chunk_id NOT IN (SELECT id FROM chunks)"
+    ).fetchone()[0]
+    if n_orphan:
+        conn.execute("DELETE FROM vec_m3 WHERE chunk_id NOT IN (SELECT id FROM chunks)")
+        conn.commit()
+        say("[m3] 清理孤儿向量 %d 行（chunk 已不存在，与 [bge] 清理同口径）" % n_orphan)
     lag_before = vec_tables.m3_lag(conn)
     if mode in ("0", "off", "false", "no"):
         return {"status": "skipped", "encoded": 0, "lag_before": lag_before,
@@ -979,7 +1230,7 @@ def backfill_m3(conn, limit=0, batch=32):
     if not lag_before:
         return {"status": "noop", "encoded": 0, "lag_before": 0, "lag_after": 0}
 
-    model_dir = os.environ.get("KB_M3_MODEL_DIR") or os.path.join(HERE, "models", "bge-m3")
+    model_dir = M3_MODEL_DIR
     tail = _m3_skip_tail(mode, limit)
     if not os.path.isdir(model_dir):
         say("⚠️ m3 模型缺失（%s），跳过 m3 补编码%s" % (model_dir, tail))
@@ -1334,7 +1585,7 @@ def _cmd_build_body(args):
                "分批构建（--limit）" if args.limit else "KB_BACKFILL_M3=%s" % m3_mode))
     say("[build] 完成。%s" % PRIVACY_NOTE)
     conn.close()
-    # 🔴 W1-C-4 机制根治（2026-11-04，生产侧实证后回流）：主连接关闭后再补 m3，避免写锁冲突。
+    # 🔴 W1-C-4 机制根治（2026-11-04）：主连接关闭后再补 m3，避免写锁冲突。
     #    触发条件刻意收紧：全量构建 + 未 --skip-vec + 当时确有缺口。
     #    无 GPU venv 的机器维持原行为（打一行提示，不改 rc）。
     if (not getattr(args, "skip_vec", False)) and not args.limit and rep.get("lag_m3", 0) > 0:
@@ -1372,14 +1623,6 @@ def cmd_stats(args):
         g("SELECT COUNT(*) FROM chunk_bge")))
     row = conn.execute("SELECT built_at FROM bge_model WHERE id=1").fetchone()
     print("BGE 构建于：%s" % (row[0] if row else "未构建"))
-    # 🔴 #37：m3 覆盖率必须和 BGE 并排可见。以前只看 BGE，导致「m3 建表但从不填」
-    #    这种漂移在 stats 上完全看不出来。
-    try:
-        n_m3 = g("SELECT COUNT(*) FROM vec_m3")
-        m3row = conn.execute("SELECT built_at FROM m3_model WHERE id=1").fetchone()
-        print("vec_m3 %d ｜ m3 构建于 %s" % (n_m3, m3row[0] if m3row else "未构建"))
-    except sqlite3.OperationalError:
-        print("vec_m3 未建表（尚未跑过 build）")
     conn.close()
 
 
@@ -1512,7 +1755,9 @@ def cmd_search(args):
         res, note = search_unified(conn, args.query, topk=args.topk, mode=args.mode,
                                    rerank=not args.no_rerank,
                                    since=args.since, path_prefix=args.path_prefix,
-                                   rewrite=getattr(args, "rewrite", None))
+                                   rewrite=getattr(args, "rewrite", None),
+                                   category=getattr(args, "category", None),
+                                   scope=getattr(args, "scope", None))
     except ValueError as e:  # --since 格式错（argparse type 之外的双保险）
         conn.close()
         print("参数错误：%s" % e)
@@ -1524,13 +1769,24 @@ def cmd_search(args):
         since_txt = (datetime.datetime.fromtimestamp(args.since).strftime("%Y-%m-%d")
                      if isinstance(args.since, int) else args.since)
         emit_json({"query": args.query, "mode": args.mode,
-                   "filters": {"since": since_txt, "path_prefix": args.path_prefix},
+                   "filters": {"since": since_txt, "path_prefix": args.path_prefix,
+                               "category": getattr(args, "category", None)},
                    "latency_ms": 0, "n_results": len(res),
                    "note": note,
                    "results": [{"rank": i, "score": r["score"], "path": r["path"],
                                 "title": r.get("title", ""), "category": r.get("category", ""),
                                 "snippet": r.get("snippet", ""), "matched": r.get("matched", []),
                                 "coverage": r.get("coverage"),
+                                # 🔴 2026-11-13：把 _enrich() 打的出口标记透出 --json。
+                                # 原先这里重新构造 dict，把 redacted/scope/local_only 裁掉了，
+                                # 门户 / MCP / 脚本只能靠猜 snippet 里有没有 🔒 才知道结果
+                                # 是否被脱敏。纯增量字段，既有字段值一个都没改。
+                                "redacted": r.get("redacted"),
+                                "scope": r.get("scope"),
+                                "local_only": r.get("local_only"),
+                                # 2026-11-13：被哪一层拦的（privacy_path / egress_policy），
+                                # 纯增量字段；非敏感命中为 None。
+                                "redacted_by": r.get("redacted_by"),
                                 "source": r.get("source", ""),
                                 "rerank_score": r.get("rerank_score"),
                                 "reranked": bool(r.get("reranked"))} for i, r in enumerate(res, 1)]})
@@ -1552,8 +1808,9 @@ def cmd_ask(args):
     conn = kb_index.connect()
     res, note = search_unified(conn, args.query, topk=args.topk, mode=args.mode,
                                rerank=not args.no_rerank,
-                               rewrite=getattr(args, "rewrite", None))
-    ctx, cites = build_context(args.query, res)
+                               rewrite=getattr(args, "rewrite", None),
+                               scope=getattr(args, "scope", None))
+    ctx, cites = build_context(args.query, res, getattr(args, "scope", None))
     conn.close()
     if args.json:
         emit_json({"question": args.query, "mode": args.mode, "note": note,
@@ -1584,29 +1841,37 @@ def main():
     p.add_argument("--query", required=True)
     p.add_argument("--mode", default="fused", choices=["fused", "kw", "vec", "substr"])
     p.add_argument("--topk", type=int, default=5)
+    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
+                   help="查询改写档位（#39）。默认读 KB_REWRITE，未设则 off（=改造前行为，逐位一致）")
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
-    # #39 改写档位（默认 None = 读 KB_REWRITE，再回落 DEFAULT_LEVEL=off；off 与改造前逐位一致）
-    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
-                   help="查询改写档位：off=不改写（=改造前行为）/ l0=确定性拆分（默认）/ "
-                        "l1=+去口语 / l2=+HyDE（需 KB_HYDE=1 且有 KB_HYDE_CMD）")
     # T3 元数据过滤：--since 用 type 在解析期校验日期格式（用法错误立刻可见）；
     # 过滤在 search_unified 内融合后、rerank 前执行（见该函数注释）
     p.add_argument("--since", type=_since_arg, default=None, metavar="YYYY-MM-DD",
                    help="只返 mtime ≥ 该日期 00:00 的文档（mtime 来自 backfill-meta 回填）")
     p.add_argument("--path-prefix", dest="path_prefix", default=None, metavar="PREFIX",
                    help="只返 path 以该前缀开头的文档（如 wiki/技术）")
+    p.add_argument("--category", default=None, metavar="CAT",
+                   help="只返 docs.category 恰为该值的文档（W4）。真实取值现查 SQL "
+                        "SELECT category,COUNT(*) FROM docs GROUP BY category；"
+                        "常用 wiki / raw / modules / projects")
+    p.add_argument("--scope", default=None, choices=["egress", "local"],
+                   help="默认 egress（隐私正文换占位符，逐位保持原行为）；local=显式本机自用，"
+                        "放行本人隐私正文并打 LOCAL-ONLY 水印，禁止外传")
     p.set_defaults(func=cmd_search)
     p = sub.add_parser("ask")
     p.add_argument("--query", required=True)
     p.add_argument("--mode", default="fused", choices=["fused", "kw", "vec", "substr"])
     p.add_argument("--topk", type=int, default=8)
+    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
+                   help="查询改写档位（#39）。默认读 KB_REWRITE，未设则 off（=改造前行为，逐位一致）")
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-rerank", action="store_true",
                    help="关闭 Cross-Encoder 精排（默认开；仅 fused 模式生效，短查询自动跳过）")
-    p.add_argument("--rewrite", default=None, choices=["off", "l0", "l1", "l2"],
-                   help="查询改写档位（同 search；默认读 KB_REWRITE，再回落 off）")
+    p.add_argument("--scope", default=None, choices=["egress", "local"],
+                   help="默认 egress（隐私正文换占位符，逐位保持原行为）；local=显式本机自用，"
+                        "放行本人隐私正文并打 LOCAL-ONLY 水印，禁止外传")
     p.set_defaults(func=cmd_ask)
     p = sub.add_parser("stats")
     p.set_defaults(func=cmd_stats)

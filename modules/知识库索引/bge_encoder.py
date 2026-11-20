@@ -49,7 +49,7 @@ _MODEL_CACHE = {}
 # 完全隔离，不能复用 QUERY_PREFIX（BGE-M3 官方不加中文指令前缀）、不能复用
 # chunk_bge 表（维度不同）。只有 KB_VEC_ROUTE 开启且查询判为外文时才启用。
 M3_MODEL_DIR = (os.environ.get("KB_M3_MODEL_DIR")
-                or os.path.join(HERE, "models", "bge-m3"))
+                or os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "bge-m3"))
 M3_VEC_TABLE = "vec_m3"
 M3_MAX_LEN = 512   # 与全库缓存的生成口径 _m3_tower_eval.py 保持一致（max_len=512）
 
@@ -351,7 +351,13 @@ def search_bge(conn, query, topk, oversample=None):
 
 
 def load_m3_model():
-    """懒加载 bge-m3 模型（CPU）。与 small-zh 的 load_model 完全隔离、互不污染。"""
+    """懒加载 bge-m3 模型（默认 CPU）。与 small-zh 的 load_model 完全隔离、互不污染。
+
+    W7e（2026-11-09，作者拍板合并）：KB_VEC_M3_ENGINE=gpu_fp16 时模型上 CUDA + half
+    ——依据 w7d_fullcover_eval.json：GPU fp16 编码 17.03ms（cosine_vs_cpu 0.99999905），
+    稳态检索 p50 30.26ms 优于 CPU 312.9ms。🔴 默认不设该 env = CPU torch，行为不变；
+    与生产 kb_rag.py 的路由开关（KB_VEC_ROUTE）相互独立，可各自开关。
+    """
     if "m3" in _MODEL_CACHE:
         return _MODEL_CACHE["m3"]
     import torch
@@ -361,7 +367,13 @@ def load_m3_model():
     tok = AutoTokenizer.from_pretrained(M3_MODEL_DIR)
     mdl = AutoModel.from_pretrained(M3_MODEL_DIR)
     mdl.eval()
-    torch.set_num_threads(max(1, (os.cpu_count() or 4) - 1))
+    if (os.environ.get("KB_VEC_M3_ENGINE", "").strip().lower() == "gpu_fp16"
+            and torch.cuda.is_available()):
+        mdl = mdl.half().to("cuda")
+        _MODEL_CACHE["m3_device"] = "cuda"
+    else:
+        torch.set_num_threads(max(1, (os.cpu_count() or 4) - 1))
+        _MODEL_CACHE["m3_device"] = "cpu"
     _MODEL_CACHE["m3"] = (torch, tok, mdl)
     return _MODEL_CACHE["m3"]
 
@@ -374,16 +386,21 @@ def encode_m3(texts, batch=8):
     """
     import numpy as np
     torch, tok, mdl = load_m3_model()
+    device = _MODEL_CACHE.get("m3_device", "cpu")   # W7e：GPU 档时 tensors 上同卡
     outs = []
     for i in range(0, len(texts), batch):
         chunk = texts[i:i + batch]
         enc = tok(chunk, padding=True, truncation=True,
                   max_length=M3_MAX_LEN, return_tensors="pt")
+        if device != "cpu":
+            enc = {k: v.to(device) for k, v in enc.items()}
         with torch.no_grad():
             out = mdl(**enc)
         cls = out.last_hidden_state[:, 0]          # CLS pooling（与缓存口径一致）
         cls = torch.nn.functional.normalize(cls, p=2, dim=1)
-        outs.append(cls.numpy().astype("float32"))
+        # W7e：GPU 档必须 .float().cpu() 才能转 numpy（CUDA tensor + fp16 都不能直转）；
+        # 该转换与 w7d_fullcover_eval.json 的 cosine_vs_cpu=0.99999905 口径一致。
+        outs.append(cls.float().cpu().numpy().astype("float32"))
         if (i // batch) % 5 == 0:
             print("    %d/%d" % (i + len(chunk), len(texts)), end="\r",
                   file=sys.stderr)

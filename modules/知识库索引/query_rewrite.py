@@ -27,7 +27,7 @@
     python query_rewrite.py --query "怎么搭建个人知识库 和 wiki 有啥区别" --level l0
     python query_rewrite.py --query "..." --level l2 --json
 
-作者：落花飞雪· ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
+作者：FallenPetal ｜ 许可：KBL-1.0（非商用，商用见 COMMERCIAL.md）
 """
 
 import argparse

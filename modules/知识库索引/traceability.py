@@ -40,6 +40,12 @@ JSON_OUT = os.path.join(HERE, "state", "traceability_latest.json")
 URL_RE = re.compile(r"(https?://[^\s\)\]\"'>）】]+)")
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 SOURCE_RE = re.compile(r"^\s*>\s*(Sources|来源|出处)\s*[:：]\s*(.+)$", re.M | re.I)
+# W18（2026-11-17）：部分页把来源写在 Raw 行里、用全角/半角竖线分隔，
+# 如 `> **Raw**: 无（原创）｜来源：作者 2026-11-12 裁定 + 联网调研`。
+# SOURCE_RE 只认行首 `> 来源:`，认不出这种行内变体 → 真有来源却被判缺。
+# 这条精确匹配「引用块内 + 竖线分隔 + 来源/出处/Sources + 冒号」，只捞回真来源行，
+# dry-run 验证全库仅 4 篇命中且均为真实来源（非误伤）。
+INLINE_SOURCE_RE = re.compile(r"^\s*>[^\n]*?[｜|]\s*(Sources|来源|出处)\s*[:：]\s*(.+)$", re.M | re.I)
 RAW_RE = re.compile(r"^\s*[-*>]?\s*(Raw\s*files?|Raw|原料)\s*[:：]\s*(.+)$", re.M | re.I)
 DATE_RE = re.compile(r"(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})")
 CODE_FENCE_RE = re.compile(r"```.*?```", re.S)
@@ -80,12 +86,15 @@ def scan():
             text = INLINE_CODE_RE.sub("", CODE_FENCE_RE.sub("", raw_text))
             urls = URL_RE.findall(text)
             srcs = SOURCE_RE.findall(text)
+            inline_srcs = INLINE_SOURCE_RE.findall(text)
+            # 行内变体的 group 结构与 SOURCE_RE 相同（(词, 内容)），统一进 srcs
+            srcs = srcs + inline_srcs
             # 来源行附近常带「作者/日期」，可能在其后一行，也可能在其**上一行**
             # （如 `> 2026-10-15 建｜...` 再 `> 来源：...`）。只取匹配行本身会漏日期
-            # → 取匹配行前后各两行一起判定。
+            # → 取匹配行前后各两行一起判定。行内变体同样要取上下文。
             lines_all = text.splitlines()
             ctx = []
-            for m in SOURCE_RE.finditer(text):
+            for m in list(SOURCE_RE.finditer(text)) + list(INLINE_SOURCE_RE.finditer(text)):
                 i = text[:m.start()].count("\n")
                 ctx.append("\n".join(lines_all[max(0, i - 2):i + 3]))
             fm_text = parse_frontmatter(raw_text)

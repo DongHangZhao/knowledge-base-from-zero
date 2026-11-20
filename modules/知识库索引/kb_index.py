@@ -74,30 +74,122 @@ INDEX_TARGETS = [
     # **刻意排除**：CHANGELOG.md / HANDOFF.md（时间快照与流水，改一次就变一次，
     # 进索引等于制造旧版重复 + 稀释排序）、bug记录/ 下 21 篇单 bug 台账（由
     # INDEX.md 总表代表）、rea/ 第三方开源项目自带治理文件。
-    # 🔴 2026-11-04 生产侧实证后回流：从「白名单 5 类名字」改为「黑名单只排流水」。
-    # 白名单把「立项-*.md」「参考工具调研.md」「SECURITY/CONTRIBUTING/DISCLAIMER」
-    # 这类正文全漏在索引外（搜不到 → 误判「库里没有」）。modules 一层 118 篇里
-    # 49 篇是 CHANGELOG/HANDOFF 流水，其余都是正文 ⇒ **漏的代价 > 收错的代价**：
-    #   目录里「大部分该收、少数是流水」→ 用黑名单（默认收全，排掉流水）；
-    #   目录里「大部分是垃圾、只有少数是正文」→ 用白名单（收错代价大）。
-    # 第 7 列 name_exclude 与第 5/6 列的白名单/子目录白名单互不冲突。
+    # 🔴 2026-11-04 从「白名单 5 类名字」改为「黑名单 CHANGELOG/HANDOFF」。
+    # 原白名单只收 README/AGENT/INDEX/ROADMAP/AUTOMATION_PROMPT，实际把
+    # 「立项-Raw行识别容错改造.md」「参考工具调研.md」「SECURITY/CONTRIBUTING/
+    # DISCLAIMER/THIRD_PARTY_NOTICES」「bug记录/ 22 篇单 bug 台账」全漏在索引外。
+    # 漏的代价 > 收错的代价：modules 一层 118 篇里只有 49 篇是流水，其余都是正文。
+    # 现在默认全收，只排时间快照（改了就读旧版、且稀释排序）。
     ("modules", os.path.join(KB_ROOT, "modules"), "*/*.md", False,
      None, None, {"CHANGELOG.md", "HANDOFF.md"}),
     # modules 二层子项目（2026-10-23 作者拍板纳入）。为什么用「子目录白名单」
     # 而不是通配：二层 glob `*/*/*.md` 全开会命中 157 篇，其中 rea/docs/ 58 篇
     # 是第三方开源项目自带文档、知识沉淀/reports/ 50+ 篇是 sediment 流水快照、
     # 资产巡检/reports/ 8 篇是时间戳快照——全收等于往检索库灌垃圾。
-    # 只收「后端开发/示例同事面试项目/」3 篇：RBAC 权限体系与软删除方案是
+    # 只收「后端开发/欣铁面试项目/」3 篇：RBAC 权限体系与软删除方案是
     # **与业务无关的通用可复用方案**（作者 2026-10-23 拍板纳入索引），
     # README 含公开 GitHub 仓库地址与本地路径，属求职作品集说明。
     ("modules", os.path.join(KB_ROOT, "modules"), "*/*/*.md", False,
-     {"README.md", "RBAC权限体系-可复用模板.md", "软删除与唯一索引冲突-通用方案.md"},
-     {"示例同事面试项目"}),
+     {"README.md", "RBAC权限体系-可复用模板.md", "软删除与唯一索引冲突-通用方案.md",
+      "标注规范.md", "增量验证-示例.md"},
+     # W1（2026-11-04）：eval_sets/README.md 讲「评测集怎么加样本 / 门禁怎么跑」，
+     # 是会有人来问的正文，此前因不在子目录白名单被漏在索引外（--strict 报 1 个文本盲区）。
+     # 只放开 README.md 这一个文件名，eval_sets/ 下的 json 评测数据仍不收。
+     #
+     # 🔴 2026-11-09 扩围（作者「本地所有文件都要能检索到」诉求）：
+     #   llm/        —— LLM 五件套的用法说明书。此前因三层目录未登记，
+     #                  「LLM 层怎么开、怎么降级」搜不到，等于写了没人能用（铁律 19）。
+     #   calibration/—— 人标校准的**规范正文**（怎么判对错、边界情形怎么定），
+     #                  是最该被检索的判据类文档；同目录 csv 见下面单独一条。
+     #   corpus/     —— 增量验证示例（讲「加一篇文档后图怎么变」），属方法说明不是流水。
+     # 2026-11-12 第二批次：studio/README.md 是「知识库 Studio 怎么用」的正文说明，
+     # 此前不在二层目录白名单 → 文本盲区。只放开这一个目录名，同目录 stopwords.txt 仍不收。
+     {"欣铁面试项目", "eval_sets", "llm", "calibration", "corpus", "studio"}),
+    # ---- modules 内的「数据资产」类文件（2026-11-09 补，作者「真实能检索到所有文件」）----
+    # 判据：**是资产还是流水？** 资产（别名词典 / 人标表）收；
+    # 流水（每次构建都会重写的 manifest）不收，同 CHANGELOG/HANDOFF 逻辑。
+    # 刻意排除的三份都是机器产物：release_manifest.json / corpus/manifest.json /
+    # eval_sets/manifest.json —— 它们每次 build 都变，收进索引等于制造旧版重复。
+    #
+    # 🔴 2026-11-11 移除 `eval_sets/kg_*.json`（原本在这里，2026-11-09 加）。
+    # 两个理由，都是实测出来的：
+    #   ① **体积失控**：v2 题集 gt 收全集后 861 KB，切出 1435 个 chunk（全库 0.95%）。
+    #      搜「制作 用法」这类词会命中题集本身，稀释真实文档的排序。
+    #   ② **泄题**：题集里逐条写着 gt_paths（标准答案的文档清单）。它是会被传阅的产物，
+    #      进检索库等于让「检索」在评测时读到答案 —— 评测集必须与被测系统隔离。
+    # 评测集要能「找得到」，靠的是 eval_sets/README.md（已在上一条的 dir_filter 里），
+    # 说明「评测集在哪、怎么跑」，不需要把题目正文塞进检索库。
+    ("modules", os.path.join(KB_ROOT, "modules", "知识图谱"), "alias_table.json", False),
+    ("modules", os.path.join(KB_ROOT, "modules", "知识图谱"), "calibration/*.csv", False),
+    # 2026-11-12 第二批次：图表/表格三通道评测报告是会有人来问的**结论正文**，
+    # 三层路径不匹配 `*/*/*.md`，用精确文件名收，绝不放开整个 _media_tools/。
+    ("modules", os.path.join(KB_ROOT, "modules", "公众号日更", "_media_tools"),
+     "chart_eval_report.md", False),
+    # 🔴 2026-11-14 收口：零人标校准新建的 calibration/synthetic/README.md 是**三层路径**，
+    # 二层 glob `*/*/*.md` 与 dir_filter（只匹配 base 下直接子目录）都覆盖不到，
+    # coverage_gate 实测判「未解释文本盲区 1」。同 chart_eval_report.md 先例：
+    # 只精确收这一个文件名，绝不放开整个 synthetic/（同目录 4 个 .py 脚本与
+    # gold_set_v1.json 属代码/真值集，进检索库只会稀释正文排序）。
+    ("modules", os.path.join(KB_ROOT, "modules", "知识图谱", "calibration", "synthetic"),
+     "README.md", False),
     ("root", KB_ROOT, "SKILL.md", False),
     ("root", KB_ROOT, "index.md", False),
-    # GitHub 生态配置说明（workflows / CONTRIBUTING / issue 模板）：开源仓库自带。
-    # 内容很短但搜不到就等于「新工具不知道规则在哪」，与生产侧 .github 条目同口径。
+    # ---- 根目录规则文件（2026-11-04 补，作者「换模型换工具也不能忘」诉求）----
+    # 🔴 为什么用**显式文件名**而不是 "*.md" 通配：
+    #   通配等于奖励「随手往根目录丢文件」这个坏习惯——丢进去自动进索引，就没人整理了。
+    #   显式列表 + orphan_scan.py 定期巡检报警，才「干净」与「不漏」兼得
+    #   （2026-11-04 实证：根目录 6 个急诊 md + 4 张图躺了 4 个月零索引）。
+    # 🔴 为什么这批必须进索引：它们是**给 AI 的判据**（红线 / 减法三档 / 收尾检查）。
+    #   此前只在系统提示里注入，一旦换工具读不到注入（网页版 AI / 新 CLI），
+    #   就会「不知道红线」而瞎干。进索引后 `kb_rag search 减法三档` 能直接命中。
+    #   刻意不收 *.bak：旧版规则与新版同题重复，会稀释排序（同 2026-10-23 结论）。
+    ("root", KB_ROOT, "AGENTS.md", False),
+    ("root", KB_ROOT, "AGENTS-细则.md", False),
+    ("root", KB_ROOT, "AGENTS-速查表.md", False),
+    ("root", KB_ROOT, "AGENTS-冷启动包.md", False),
+    ("root", KB_ROOT, "CLAUDE.md", False),
+    ("root", KB_ROOT, "GEMINI.md", False),
+    # ---- 跨工具转发入口 + 规范原件 + 门户说明（2026-11-04 补）----
+    # 这三个隐藏目录里放的是「Copilot / Qoder / Trae 读什么」的转发入口。
+    # 它们内容很短（1-2KB，正文都在 AGENTS.md），但**搜不到就等于新工具不知道有这回事**，
+    # 于是每个新 CLI 都要重新摸索一遍规则在哪（2026-11-04 实测就是这样漏的）。
     (".github", os.path.join(KB_ROOT, ".github"), "*.md", False),
+    (".qoder", os.path.join(KB_ROOT, ".qoder", "rules"), "*.md", False),
+    (".trae", os.path.join(KB_ROOT, ".trae", "rules"), "*.md", False),
+    # 根目录 编码指南/ 放的是「规范原件」（可复用模块沉淀规范 等），
+    # 与 wiki/编码指南/（准则合成页）分工不同，**不能合并**——全库 8 处引用都指向根目录这份。
+    ("编码指南", os.path.join(KB_ROOT, "编码指南"), "*.md", False),
+    # 门户自己的说明文档（inventory.json / rag.json / usage.json 是运行数据，不收）
+    ("门户", os.path.join(KB_ROOT, "知识库体系门户"), "*.md", False),
+    # 窗口交接工程 · **当前**派生的执行窗口（2026-11-04 立）：
+    # W1–W5 是「正在做的任务」，新窗口搜「双代码库怎么同步」「评测集怎么扩」
+    # 必须能命中，否则又是「卡片写了但找不到」。
+    # 只收「执行窗口」目录：01–11 是历史打包（每个主题 30–50 行流水），
+    # 全收会让「搜某个技术点」同时命中历史打包 + wiki 正文，稀释排序。
+    ("交接", os.path.join(KB_ROOT, "窗口交接工程", "12-本轮派生窗口-地图与对标"), "*.md", False),
+    # 2026-11-06 补：14- 也是执行窗口（就业导向 W6–W11），与 12- 同语义。
+    # 🔴 只加条目不改机制（W1 §五边界）；新开执行窗口目录时必须同步在这里登记，
+    # 否则「卡写了但搜不到」——铁律 19 的又一次实证（本轮 build 后 8 张卡零命中才发现）。
+    ("交接", os.path.join(KB_ROOT, "窗口交接工程", "14-就业导向RAG工程化补齐"), "*.md", False),
+    # 2026-11-16 补：15- 也是执行窗口（在线 Agentic 与工程完善 W13–W33），与 12-/14- 同语义。
+    # 🔴 只加条目不改机制（W13 卡边界）；不登记＝23 个新文件写了也搜不到（铁律 19）。
+    ("交接", os.path.join(KB_ROOT, "窗口交接工程", "15-在线Agentic与工程完善"), "*.md", False),
+    # ---- 参考资料与项目文档区（2026-11-04 补：此前整个目录在索引外）----
+    # references/ 是模板与范式；ai决策管理施工落地项目/ 是完整项目资料（PRD + 系统设计 + 角色提示词）。
+    # 这两块一直是「知道有、但搜不到」，只能靠翻目录。
+    ("references", os.path.join(KB_ROOT, "references"), "*.md", True),
+    ("projects", os.path.join(KB_ROOT, "ai决策管理施工落地项目"), "*.md", True),
+    # ---- modules 的提示词资产（2026-11-04 补）----
+    # README 只讲「这个能力怎么用」，prompts/ 里才是「角色具体怎么干」的正文。
+    # 2026-11-04 实测：公众号日更 prompts/column-night.md（24KB 长文提示词）、
+    # ai协作流水线 prompts/manager.md 等 10 余篇全在索引外，搜「栏目提示词」搜不到。
+    # 深度恰好卡在一层 prompts/：更深是各次 run 的临时产物（runs/、_lrc_cache/），不收。
+    ("modules", os.path.join(KB_ROOT, "modules"), "*/prompts/*.md", False),
+    # modules 自带的技能定义与子技能：和 prompts/ 同理，是「具体怎么干」的正文
+    ("modules", os.path.join(KB_ROOT, "modules"), "*/skills/*.md", False),
+    # 会话留痕（modules/会话留痕/YYYY-MM-DD.md）：每轮收尾的 5 行判断记录。
+    # 不收的后果是「上次这个坑怎么填的」只能靠翻文件，而这恰恰是最该被检索的东西。
+    ("modules", os.path.join(KB_ROOT, "modules", "会话留痕"), "*.md", False),
     # 技能区：SKILL.md 是「这个能力存在、怎么用」的唯一说明。不索引会导致
     # **能力封装成技能后反而检索不到**——2026-10-23 实证：video-channels-capture
     # 明明在 .workbuddy/skills/ 里，kb_rag 搜「视频号 下载」却搜不出它，
@@ -113,6 +205,12 @@ INDEX_TARGETS = [
     ("skills", os.path.join(KB_ROOT, ".workbuddy", "skills"), "SKILL.md", True),
     ("skills", os.path.join(KB_ROOT, ".workbuddy", "skills"), "*/*.md", False),
     ("skills", os.path.join(KB_ROOT, ".workbuddy", "skills"), "*/*/*.md", False),
+    # 2026-11-18 W28 收口：三套图谱统一台账是「结论正文」（纠正「仅 33 篇」误报 + 三套口径），
+    # 不是流水快照，故精确登记这一个文件名进检索。
+    # 🔴 只加条目不改机制（W1 §五 / W13 卡边界）；绝不放开整个 outputs/（同 chart_eval_report.md
+    # 与 synthetic/README.md 先例）——outputs 下 HTML/JSON/带时点快照全收会稀释排序。
+    # 判据来源：kb_index.py:125,131 先例 + 2026-10-23 技能登记模板（备份→加条目→build→验证）。
+    ("outputs", os.path.join(KB_ROOT, "outputs", "知识图谱"), "图谱统一台账-20261116.md", False),
 ]
 # 🔴 所有权边界（BUG-20261022-19，raw docs 3885→0 事故）：本模块只负责
 # INDEX_TARGETS 扫到的品类（modules/root/wiki）；raw 正文索引归 ingest_raw.py
@@ -184,8 +282,6 @@ CHUNKER_FP = "v2.1|max=480|snap=0.85|ovl=0|gf=1"   # 🔴 分块器指纹：写�
 # 为什么用 OS 文件锁而不是「锁文件 + PID 探测」：进程被强杀时 OS 会自动释放
 # 文件锁，不会留下永久残留。PID 方案在这种场景会失效——10-22 我就是用
 # 「杀所有 python.exe」的焦土命令把自己的 build 一起杀了，PID 文件会烂在那。
-
-
 def default_lock_path(db_path=None):
     """推导 build 锁文件路径（D2：锁必须**随库**派生，不能全进程共用一把）。
 
@@ -193,7 +289,7 @@ def default_lock_path(db_path=None):
       ① 环境变量 `KB_BUILD_LOCK`（显式指定，压过一切；也是本修复的一键回滚开关）
       ② `<db_path 所在目录>/build.lock`（默认库 → `state/build.lock`，与旧行为逐位一致）
 
-    🔴 为什么必须 per-DB（2026-11-03 修，多租户 bug）：
+    🔴 为什么必须 per-DB（2026-11-03 修，多租户 bug，来自仓库侧 #D2）：
       旧实现把锁路径写成**模块级常量**，只依赖 `_HERE`，完全不看 `KB_DB_PATH`。
       于是两个租户（`tenantA/kb.db` 与 `tenantB/kb.db`）并发 build 会抢同一把锁：
       一方被 Busy 直接跳过（看似"保护"实为串行化错杀），更糟的是 `_read_meta()`
@@ -214,10 +310,8 @@ def default_lock_path(db_path=None):
     return os.path.join(os.path.dirname(os.path.abspath(base)), "build.lock")
 
 
-# 兼容别名：历史上外部代码/文档直接引用 `kb_index.LOCK_PATH`（导入时快照值）。
-# 新代码请用 `default_lock_path()` —— 它随 KB_DB_PATH / KB_BUILD_LOCK 在调用时解析。
+# 兼容别名：老代码/外部脚本仍可 import LOCK_PATH（单租户下与 default_lock_path() 同值）
 LOCK_PATH = default_lock_path()
-
 
 if os.name == "nt":
     import msvcrt
@@ -258,8 +352,7 @@ class BuildLock:
             self.info = info
 
     def __init__(self, path=None):
-        # 🔴 调用时解析（不能写 `path or LOCK_PATH`）：LOCK_PATH 是导入时快照，
-        # 同一进程内换库（KB_DB_PATH 变化 / 单测直连临时库）会拿到别人的锁文件。
+        # 🔴 调用时解析（不是导入时快照）：同进程切库时锁必须跟着库走
         self.path = path or default_lock_path()
         self.fh = None
 
@@ -285,10 +378,17 @@ class BuildLock:
 
     def acquire(self, wait=0, poll=5.0, verbose=True):
         os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
-        self.fh = open(self.path, "a+b")  # a+b：不截断，别人读得到持有者信息
         deadline = time.time() + wait
         while True:
             try:
+                # 🔴 W8 生产锁立项（2026-11-09）：open 必须在重试循环**内**。
+                # 原先它在循环外，Windows 下任何瞬时 PermissionError（强制锁、
+                # 杀毒/索引器占用、.info 写入竞争）都会直接穿出，--wait 排队
+                # 逻辑根本进不去，调用方看到的是「崩」而不是 Busy。
+                # 取证：_test_lock_contention.py P4 故障注入（修复前 CRASH、修复后 GOT_AFTER_RETRY）。
+                # 拿不到锁时 self.fh 复用；仅在放弃时由 release() 关掉半开句柄。
+                if self.fh is None:
+                    self.fh = open(self.path, "a+b")  # a+b：不截断，别人读得到持有者信息
                 _lk_lock(self.fh)
                 meta = "%d | %s | %s" % (
                     os.getpid(),
@@ -308,6 +408,7 @@ class BuildLock:
                 return self
             except OSError:
                 if time.time() >= deadline:
+                    self.release()  # 关掉可能半开的句柄，避免文件描述符泄漏
                     raise BuildLock.Busy(self._read_meta())
                 if verbose:
                     print("[lock] build 已被占用（%s），等待 %.0fs 后重试…"
@@ -571,7 +672,7 @@ def read_md_meta(path):
     原来的「跳过 # | > - * ` { 开头行」规则**漏掉了代码块围栏内部**，
     于是摘要会抓到代码首行 —— 实证：`RBAC权限体系-可复用模板.md` 摘要是
     `<dependency>`、`软删除与唯一索引冲突-通用方案.md` 是 `// 校验：只查未删除记录`、
-    `bug记录/INDEX.md` 是 `PY="<某绝对路径>python.exe"`。这类摘要在检索结果里
+    `bug记录/INDEX.md` 是 `PY="<用户目录>/python.exe"`。这类摘要在检索结果里
     完全不可读（只影响展示，不影响排序与命中）。
 
     修法四条（干跑验证：559 篇中 243 篇摘要变好，**无新增空摘要**）：
@@ -636,6 +737,13 @@ def scan_files():
     pattern="*/*.md" 这类二层 glob 使用）—— 用来在「一个模块下有很多子项目」
     的场景里只收指定的子项目，避免把第三方项目自带文档（rea/docs/ 58 篇）、
     自动生成的流水快照（知识沉淀/reports/ 50+ 篇 sediment）一并灌进索引。
+    第 7 列可选：文件名黑名单。**白名单与黑名单的取舍原则**——
+      目录里的文件「大部分该收、少数是流水」→ 用黑名单（漏掉的代价小，默认收全）；
+      目录里的文件「大部分是垃圾、只有少数是正文」→ 用白名单（收错的代价大）。
+    2026-11-04 实证：modules 一层 118 篇 md 里 30 篇 README 是正文、49 篇
+    CHANGELOG/HANDOFF 是流水，原来用白名单只收 5 类名字，把「立项-*.md」
+    「参考工具调研.md」这类正文漏在索引外（搜不到 → 判「库里没有」）。
+    改黑名单后只排 CHANGELOG/HANDOFF，正文自动收全。
     """
     import glob as globmod
     docs = []
@@ -657,7 +765,7 @@ def scan_files():
                 # dir_filter 匹配的是「base 下的**直接子目录**」，
                 # 即 rel 路径的第 2 段（parts[1]）。parts[0] 是模块目录本身
                 # （如「后端开发」），parts[1] 才是模块下的子项目
-                # （如「示例同事面试项目」）。配合 pattern="*/*/*.md" 使用。
+                # （如「欣铁面试项目」）。配合 pattern="*/*/*.md" 使用。
                 rel = os.path.relpath(fp, base).replace("\\", "/")
                 parts = rel.split("/")
                 if len(parts) < 3 or parts[1] not in dir_filter:
@@ -669,6 +777,13 @@ def scan_files():
             # （2026-10-23 实证：搜「AI 写代码 难度分档」第二名是 wiki/_versions 里的旧准则；
             #   skills 加版本管理后同样出现 _versions/code/SKILL.md 占位）
             if "/_versions/" in rp:
+                continue
+            # 🔴 2026-11-11 修：整条路径里任一段带 `.bak` 一律跳过。
+            # 起因：`*/README.md` 那条规则按「直接子目录名」筛，没排除备份目录，
+            # 于是 `modules/知识库索引.bak-20261104-presync/eval_sets/README.md`
+            # 与 `…-premerge/…` 两份旧副本被当成正文收进索引（实测多出 2 篇 / 26 块）。
+            # 备份与时间快照同性质：内容旧、与当前版重复、会稀释排序。
+            if any(".bak" in _seg for _seg in rp.split("/")):
                 continue
             seen.add(rp)
             try:
@@ -1266,16 +1381,35 @@ def search_hybrid(conn, query, topk, w_fts=1.0, w_tfidf=1.0):
 
 
 def drop_doc(conn, doc_id):
-    """彻底删掉一篇文档在四张表里的痕迹（docs / docs_fts / doc_terms / chunks）。"""
+    """彻底删掉一篇文档在所有派生表里的痕迹。
+
+    🔴 2026-11-11 修（铁律 14「索引健康比指标好看重要」）：
+    旧版只清 docs / docs_fts / doc_terms / chunks / chunks_fts 五张，
+    **漏了 chunk_bge / vec_m3 / chunks_trigram / chunk_entities 四张派生表**。
+    后果：白名单收窄或文件删除后，主表干净了，向量与实体却留下孤儿行 —
+    「chunks 行数 == chunk_bge 行数」这种只比行数的检查还看不出来（缺失与孤儿可互相抵消）。
+    每张都 try 包住：老库可能还没建这些表，缺表不该让删除失败。
+    """
+    cids = []
+    try:
+        cids = [r[0] for r in conn.execute("SELECT id FROM chunks WHERE doc_id=?", (doc_id,))]
+    except sqlite3.OperationalError:
+        pass
     conn.execute("DELETE FROM docs WHERE id=?", (doc_id,))
     conn.execute("DELETE FROM docs_fts WHERE rowid=?", (doc_id,))
     conn.execute("DELETE FROM doc_terms WHERE doc_id=?", (doc_id,))
-    try:
-        for cid in [r[0] for r in conn.execute("SELECT id FROM chunks WHERE doc_id=?", (doc_id,))]:
-            conn.execute("DELETE FROM chunks_fts WHERE rowid=?", (cid,))
+    if cids:
+        for cid in cids:
+            for sql in ("DELETE FROM chunks_fts WHERE rowid=?",
+                        "DELETE FROM chunks_trigram WHERE rowid=?",
+                        "DELETE FROM chunk_bge WHERE chunk_id=?",
+                        "DELETE FROM vec_m3 WHERE chunk_id=?",
+                        "DELETE FROM chunk_entities WHERE chunk_id=?"):
+                try:
+                    conn.execute(sql, (cid,))
+                except sqlite3.OperationalError:
+                    pass   # 该派生表尚未建（老库），跳过
         conn.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
-    except sqlite3.OperationalError:
-        pass
 
 
 def log_query(conn, query, mode, results, latency_ms):
